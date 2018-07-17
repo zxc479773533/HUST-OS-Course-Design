@@ -8,7 +8,7 @@
  * Github: zxc479773533
  */
 
-#include "../zxcpyplib/zxcpyp_sys.h"
+#include "../lib/zxcpyp_sys.h"
 
 #define BUF_LEN 1024
 

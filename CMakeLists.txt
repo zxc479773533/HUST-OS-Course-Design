@@ -11,10 +11,10 @@ link_directories (${GTK3_LIBRARY_DIRS})
 add_definitions (${GTK3_CFLAGS_OTHER})
 
 # Add zxcpyp lib
-add_subdirectory(./zxcpyplib)
+add_subdirectory(./lib)
 
 # Build Part I
 add_executable(copy ./PartI-Linux_basics/copy.c)
-target_link_libraries(copy zxcpyp_lib)
+target_link_libraries(copy lib)
 add_executable(fork_demo ./PartI-Linux_basics/fork_demo.c)
-target_link_libraries(fork_demo zxcpyp_lib ${GTK3_LIBRARIES})
+target_link_libraries(fork_demo lib ${GTK3_LIBRARIES})

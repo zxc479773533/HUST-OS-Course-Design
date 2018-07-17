@@ -8,14 +8,14 @@
  * Github: zxc479773533
  */
 
-#include "../zxcpyplib/zxcpyp_sys.h"
+#include "../lib/zxcpyp_sys.h"
 
 #include <wait.h>
 #include <gtk/gtk.h>
 
 #define WINDOW_WIDTH 450
 #define WINDOW_HEIGHT 300
-#define RE_FEQ 250
+#define RE_FEQ 1000
 
 /*
  * refresh_time - Refresh the time in window1
