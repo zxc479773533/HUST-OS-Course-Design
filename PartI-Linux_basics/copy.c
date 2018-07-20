@@ -25,7 +25,9 @@ void do_copy(int read_fd, int write_fd) {
   char buf[BUF_LEN];
   for (;;) {
     read_num = read(read_fd, buf, BUF_LEN);
-    if (read_num == 0)
+    if (read_num == -1)
+      err_exit("Copy");
+    else if (read_num == 0)
       break;
     write(write_fd, buf, read_num);
   }
@@ -37,8 +39,10 @@ int main(int argc, char **argv) {
   if (argc != 3)
     usage_err("./copy <src> <dst>");
   /* Open files */
-  read_fd = open(argv[1], O_RDONLY);
-  write_fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, get_file_mode(argv[1]));
+  if ((read_fd = open(argv[1], O_RDONLY)) == -1)
+    err_exit("Open source file");
+  if ((write_fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, get_file_mode(argv[1]))) == -1)
+    err_exit("Open destnation file");
   do_copy(read_fd, write_fd);
   return 0;
 }
