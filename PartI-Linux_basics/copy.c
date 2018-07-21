@@ -44,5 +44,7 @@ int main(int argc, char **argv) {
   if ((write_fd = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, get_file_mode(argv[1]))) == -1)
     err_exit("Open destnation file");
   do_copy(read_fd, write_fd);
+  close(read_fd);
+  close(write_fd);
   return 0;
 }
