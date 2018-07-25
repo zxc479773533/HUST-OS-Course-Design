@@ -6,6 +6,12 @@ Here are steps for Compileing and installing the ***Linux kernel 4.17.8*** on **
 
 The details can be seen in `install.sh`.
 
+Here I add three syscalls:
+
+1. Test "Hello World"
+2. Test parameter passing
+3. Copy files
+
 ### Get linux kernel code 4.17.8
 
 Here we get it from kernel.org.
