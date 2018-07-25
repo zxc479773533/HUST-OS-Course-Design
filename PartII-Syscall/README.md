@@ -54,6 +54,8 @@ sudo sh ./install.sh
 
 ### Reboot and Install NVIDIA drivers in kernel modules
 
+***Attention: Skip this step may cause the graphical interface to fail to open***
+
 Get the nvidia driver from offical website, choose the version that matches your Graphics.
 
 https://www.nvidia.com/Download/index.aspx
