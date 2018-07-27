@@ -1,3 +1,10 @@
 # my config
 build
 .vscode
+.tmp_versions
+*.o
+*.ko
+*.cmd
+*.order
+*.symvers
+*.mk
