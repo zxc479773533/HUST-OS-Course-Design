@@ -3,7 +3,7 @@
  * 
  * Device driver - Character device driver
  * 
- * Created by zxcpyp at 2018-07-22
+ * Created by zxcpyp at 2018-07-27
  * 
  * Github: zxc479773533
  */
@@ -18,7 +18,7 @@
 #include <linux/uaccess.h>
 
 #define ZXCPYPMEM_SIZE 0x4000  /* 8KB for zxcpyp driver */
-#define GLOBAL_MAJOR 666  /* Set device major */
+#define GLOBAL_MAJOR 500  /* Set device major */
 #define MEM_CLEAR 1  /* Use for ioctl to clear memory */
 
 MODULE_LICENSE("GPL");
@@ -72,7 +72,7 @@ static ssize_t zxcpypdriver_read(struct file *filep, char __user *buf, size_t co
   else {
     if (copy_to_user(buf, dev->mem + *offset, avail) != 0)
       return -EFAULT;
-    *offset += count;
+    *offset += avail;
     ret = avail;
   }
 
@@ -90,20 +90,21 @@ static ssize_t zxcpypdriver_write(struct file *filep, const char __user *buf, si
   size_t avail = ZXCPYPMEM_SIZE - *offset;
   struct zxcpyp_dev *dev = filep->private_data;
   memset(dev->mem + *offset, 0, avail);
+  printk(KERN_INFO "ZXCPYP Driver: After write\n");
 
   /* Available memory exists */
-  if (count <= avail) {
-    if (copy_from_user(buf, dev->mem + *offset, count) != 0)
+  if (count > avail) {
+    if (copy_from_user(dev->mem + *offset, buf, avail) != 0)
       return -EFAULT;
-    *offset += count;
-    ret = count;
+    *offset += avail;
+    ret = avail;
   }
   /* Available memory not enough */
   else {
-    if (copy_from_user(buf, dev->mem + *offset, avail) != 0)
+    if (copy_from_user(dev->mem + *offset, buf, count) != 0)
       return -EFAULT;
     *offset += count;
-    ret = avail;
+    ret = count;
   }
 
   printk(KERN_INFO "ZXCPYP Driver: written %u bytes\n", ret);
@@ -172,9 +173,10 @@ static loff_t zxcpypdriver_llseek(struct file *filep, loff_t offset, int whence)
 static long zxcpypdriver_ioctl(struct file *filep, unsigned int cmd, unsigned long arg) {
   printk(KERN_INFO "ZXCPYP Driver: start memory clear\n");
 
+  struct zxcpyp_dev *dev = filep->private_data;
   switch (cmd) {
   case MEM_CLEAR:
-    memset(filep->private_data, 0, ZXCPYPMEM_SIZE);
+    memset(dev->mem, 0, ZXCPYPMEM_SIZE);
     printk("ZXCPYP Driver: memory is set to zero\n");
     break;
   default:
@@ -217,6 +219,7 @@ static int __init zxcpypdriver_init(void) {
     ret = -ENOMEM;
     goto failed;
   }
+  memset(zxcpyp_devp->mem, 0, ZXCPYPMEM_SIZE);
 
   /* Setup device */
   cdev_init(&zxcpyp_devp->cdev, &fops);

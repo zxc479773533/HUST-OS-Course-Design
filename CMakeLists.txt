@@ -21,8 +21,8 @@ target_link_libraries(fork_demo lib ${GTK3_LIBRARIES})
 
 # Build Part II
 add_executable(testcall ./PartII-Syscall/testcall.c)
-target_link_libraries(testcall lib)
 add_executable(teststr ./PartII-Syscall/teststr.c)
-target_link_libraries(teststr lib)
 add_executable(testcp ./PartII-Syscall/testcp.c)
-target_link_libraries(testcp lib)
+
+# Build Part III
+add_executable(testdev ./PartIII-Device_driver/testdev.c)
