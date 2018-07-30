@@ -2,7 +2,7 @@
 
 ## About
 
-Here are steps for Compileing and installing the ***Linux kernel 4.17.8*** on ***Arch Linux x86_64***. This can be a little bit diffient from the way it used to be on ***Ubuntu*** or ***Linux kernel version <= 4.15***.
+Here are steps for Compileing and installing the ***Linux kernel 4.17.8*** on ***Arch Linux x86_64***. This can be a little diffient from the way it used to be on ***Ubuntu*** or ***Linux kernel version <= 4.15***.
 
 The details can be seen in `install.sh`.
 

@@ -4,7 +4,19 @@ HUST Operating System curriculum design 2018 Summer.
 ## About
 
 Environment: Arch Linux x86_64
+
 Kernel version: 4.17.8
+
+CMake minimum required: version 3.9
+
+## Compile
+
+```sh
+mkdir build
+cd build
+cmake ..
+make
+```
 
 ## Part I: Linux_basics
 
@@ -15,7 +27,7 @@ Kernel version: 4.17.8
 
 Adding a system call to copy file in linux kernel.
 
-Here I use Arch Linux x86_64 and kernel 4.17.8, it may be a little bit diffient from the way it used to be on Ubuntu or Linux kernel version <= 4.15.
+Here I use ***Arch Linux x86_64*** and ***kernel 4.17.8***, it may be a little diffient from the way it used to be on ***Ubuntu*** or ***Linux kernel version <= 4.15*** because of the fucking NVIDIA.
 
 The details can be seen [here](PartII-Syscall/README.md) (README in Part II)
 
