@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     printf("Write succeed!\n");
   }
   else if (argc == 3 && strncmp(argv[1], "ioctl", 5) == 0) {
-    if (strncmp(argv[3], "clear", 5) == 0) {
+    if (strncmp(argv[2], "clear", 5) == 0) {
       ioctl(fd, MEM_CLEAR, NULL);
       printf("Clear success!\n");
     }

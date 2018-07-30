@@ -252,7 +252,7 @@ static int __init zxcpypdriver_init(void) {
  * zxcpypdriver_exit - Exit function for zxcpypdriver
  */
 static void __exit zxcpypdriver_exit(void) {
-  printk(KERN_INFO "Load module: zxcpypdriver\n");
+  printk(KERN_INFO "Unload module: zxcpypdriver\n");
 
   device_destroy(class, MKDEV(GLOBAL_MAJOR, 0));
   class_unregister(class);
