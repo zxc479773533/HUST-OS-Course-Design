@@ -17,4 +17,12 @@ Adding a system call to copy file in linux kernel.
 
 Here I use Arch Linux x86_64 and kernel 4.17.8, it may be a little bit diffient from the way it used to be on Ubuntu or Linux kernel version <= 4.15.
 
-The details can be seen [here](PartII-Syscall/README.md)
+The details can be seen [here](PartII-Syscall/README.md) (README in Part II)
+
+## Part III: Character Device driver
+
+Implement a character device driver by linux kernel module.
+
+Here I added read, write, lseek, ioctl(for clear) functions.
+
+The details can be seen [here](PartIII-Device_driver/README.md) (README in Part III)
