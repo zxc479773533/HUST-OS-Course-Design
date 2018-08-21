@@ -26,3 +26,8 @@ add_executable(testcp ./PartII-Syscall/testcp.c)
 
 # Build Part III
 add_executable(testdev ./PartIII-Device_driver/testdev.c)
+
+# Build Part IV
+aux_source_directory(./PartIV-System_monitor sysmonitor)
+add_executable(py_sysmonitor ${sysmonitor})
+target_link_libraries(py_sysmonitor ${GTK3_LIBRARIES})
