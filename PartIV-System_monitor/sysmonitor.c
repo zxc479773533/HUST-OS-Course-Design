@@ -139,6 +139,7 @@ void get_process_info(void) {
 
   /* Read proc info */
   dir = opendir("/proc");
+  process_num = 0;
   while (dir_info = readdir(dir)) {
     /*
      * If start with number, then read it
@@ -152,6 +153,7 @@ void get_process_info(void) {
         txt[i] = utf8_fix(info[i]);
       close(fd);
       gtk_clist_append(GTK_CLIST(clist), txt);
+      process_num++;
     }
   }
   closedir(dir);
@@ -212,7 +214,7 @@ int main(int argc, char **argv) {
   button1 = gtk_button_new_with_label("Search by PID");
   button2 = gtk_button_new_with_label("Kill");
   button3 = gtk_button_new_with_label("Refresh");
-  g_signal_connect(G_OBJECT(button1), "clicked", G_CALLBACK(search_proc), NULL);
+  g_signal_connect(G_OBJECT(button1), "clicked", G_CALLBACK(search_proc), scrolled_window);
   g_signal_connect(G_OBJECT(button2), "clicked", G_CALLBACK(kill_proc), NULL);
   g_signal_connect(G_OBJECT(button3), "clicked", G_CALLBACK(refresh_proc), NULL);
   gtk_widget_set_size_request(entry, 200, 30);
@@ -289,9 +291,18 @@ void select_row_callback(GtkWidget *clist, gint row, gint column, GdkEventButton
   return;
 }
 
-void search_proc(void) {
+void search_proc(GtkButton *button, gpointer data) {
   const gchar *entry_txt;
+  gchar *txt;
+  gint ret, i = 0;
   entry_txt = gtk_entry_get_text(GTK_ENTRY(entry));
+  while ((ret = gtk_clist_get_text(GTK_CLIST(clist), i, 0, &txt)) != 0) {
+    if (!strcmp(entry_txt, txt))
+      break;
+    i++;
+  }
+  gtk_clist_select_row(GTK_CLIST(clist), i, 0);
+  scroll_to_line(data, process_num, i);
   return;
 }
 
@@ -313,4 +324,28 @@ void refresh_proc(void) {
   get_process_info();
   gtk_clist_thaw(GTK_CLIST(clist));
   return;
+}
+
+/********************ASSISTS********************/
+
+/*
+ * scroll_to_line - To set the scroll window position
+ * 
+ * Modified from: https://my.oschina.net/plumsoft/blog/79950
+ */
+void scroll_to_line(gpointer scrolled_window, gint line_num, gint to_line_index) {
+  GtkAdjustment *adj;
+  gdouble lower_value, upper_value, page_size, max_value, line_height, to_value;
+  adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scrolled_window));
+  lower_value = gtk_adjustment_get_lower(adj);
+  upper_value = gtk_adjustment_get_upper(adj);
+  page_size = gtk_adjustment_get_page_size(adj);
+  max_value = upper_value - page_size;
+  line_height = upper_value / line_num;
+  to_value = line_height * to_line_index;
+  if (to_value < lower_value)
+    to_value = lower_value;
+  if (to_value > max_value)
+    to_value = max_value;
+  gtk_adjustment_set_value(adj, to_value);
 }
