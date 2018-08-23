@@ -11,13 +11,6 @@
 #include "sysmonitor.h"
 
 /*
- * utf8_fix - To settle waring: Invalid UTF-8 string passed to pango_layout_set_text()
- */
-char* utf8_fix(char *c) {
-  return g_locale_to_utf8(c, -1, NULL, NULL, NULL);
-}
-
-/*
  * read_stat - Read data from /proc/pid/stat
  */
 void read_stat(char (*info)[1024], char *stat_file) {
@@ -159,6 +152,88 @@ void get_process_info(void) {
   closedir(dir);
 }
 
+/*
+ * get_cpu_info - get cpu information from /proc/cpuinfo
+ */
+void get_cpu_info(char *cpu_name,
+                  char *cpu_addr_digit,
+                  char *cpu_cache_size,
+                  char *cpu_core) {
+  /*
+   * cpuinfo file format:
+   * 
+   * model name: line 5
+   * cache size: line 9
+   * cpu cores: line 13
+   * address sizes: line 25
+   */
+  int fd;
+  char info_buf[2048];  /* Here 1024 is too small */
+  char info_str[1024];
+  char *pos = NULL;
+  int i;
+  fd = open("/proc/cpuinfo", O_RDONLY);
+  read(fd, info_buf, sizeof(info_buf));
+  close(fd);
+
+  /* Read CPU Name */
+  i = 0;
+  pos = strstr(info_buf, "model name");
+  while (*pos != ':')
+    pos++;
+  pos += 2;
+
+  while (*pos != '\n') {
+    info_str[i] = *pos;
+    i++;
+    pos++;
+  }
+  info_str[i] = '\0';
+  strcpy(cpu_name, info_str);
+
+  /* Read Cache size */
+  i = 0;
+  pos = strstr(info_buf, "cache size");
+  while (*pos != ':')
+    pos++;
+  pos += 2;
+  while (*pos != '\n') {
+    info_str[i] = *pos;
+    i++;
+    pos++;
+  }
+  info_str[i] = '\0';
+  strcpy(cpu_cache_size, info_str);
+
+  /* Read CPU Cores */
+  i = 0;
+  pos = strstr(info_buf, "cpu cores");
+  while (*pos != ':')
+    pos++;
+  pos += 2;
+  while (*pos != '\n') {
+    info_str[i] = *pos;
+    i++;
+    pos++;
+  }
+  info_str[i] = '\0';
+  strcpy(cpu_core, info_str);
+
+  /* Read Addressing digital */
+  i = 0;
+  pos = strstr(info_buf, "address sizes");
+  while (*pos != ':')
+    pos++;
+  pos += 2;
+  while (*pos != '\n') {
+    info_str[i] = *pos;
+    i++;
+    pos++;
+  }
+  info_str[i] = '\0';
+  strcpy(cpu_addr_digit, info_str);
+}
+
 
 int main(int argc, char **argv) {
   gtk_init(&argc, &argv);
@@ -168,13 +243,24 @@ int main(int argc, char **argv) {
   GtkWidget *hbox;
   GtkWidget *vbox;
   GtkWidget *label;
+  GtkWidget *label1;
+  GtkWidget *label2;
   GtkWidget *scrolled_window;
+  GtkWidget *frame;
+  GtkWidget *cpu_use;
   GtkWidget *button1;
   GtkWidget *button2;
   GtkWidget *button3;
 
   /* Save page title */
   char title_buf[1024];
+
+  /* Buffer to use */
+  char buffer1[1024];
+  char cpu_name[1024];
+  char cpu_addr_digit[1024];
+  char cpu_cache_size[1024];
+  char cpu_core[1024];
 
   /* Create top window */
   top_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -235,8 +321,44 @@ int main(int argc, char **argv) {
    */
   sprintf(title_buf, "CPU");
   vbox = gtk_vbox_new(FALSE, 0);
-  button1 = gtk_button_new_with_label("Page 2");
-  gtk_container_add(GTK_CONTAINER(vbox), button1);
+
+  /* Creat frame to show curve of CPU use */
+  hbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+  cpu_use = gtk_frame_new("CPU Use");
+  gtk_container_set_border_width(GTK_CONTAINER(cpu_use), 5);
+  gtk_widget_set_size_request(cpu_use, 520, 300);
+  gtk_box_pack_start(GTK_BOX(hbox), cpu_use, TRUE, FALSE, 5);
+
+  hbox = gtk_hbox_new(FALSE, 0);
+  label1 = gtk_label_new("Test 1");
+  label2 = gtk_label_new("Test 2");
+  gtk_box_pack_start(GTK_BOX(hbox), label1, TRUE, FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(hbox), label2, TRUE, FALSE, 5);
+  g_timeout_add(1000, (GtkFunction)get_cpu_ratio, (gpointer)label1);
+  g_timeout_add(1000, (GtkFunction)get_cpu_mhz, (gpointer)label2);
+  gtk_widget_set_size_request(hbox, 550, 30);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+
+  /* Draw CPU use curve */
+  cpu_curve = gtk_drawing_area_new();
+  gtk_widget_set_size_request(cpu_curve, 0, 0);
+  g_signal_connect(G_OBJECT(cpu_curve), "expose_event", G_CALLBACK(cpu_curve_callback), NULL);
+  gtk_container_add(GTK_CONTAINER(cpu_use), cpu_curve);
+
+  /* Creat frame to show CPU info */
+  frame = gtk_frame_new("CPU Information");
+  gtk_widget_set_size_request(frame, 500, 200);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+  get_cpu_info(cpu_name, cpu_addr_digit, cpu_cache_size, cpu_core);
+  sprintf(buffer1, "CPU Type and Frequency :\n%s\n\nAddressing digit : %s\n\nCache size : %s\n\nCPU Core : %s\n",
+                    cpu_name, cpu_addr_digit, cpu_cache_size, cpu_core);
+  label = gtk_label_new(buffer1);
+  PangoFontDescription *desc_info = pango_font_description_from_string("12");
+  gtk_widget_modify_font(label, desc_info);
+  pango_font_description_free(desc_info);
+  gtk_container_add(GTK_CONTAINER(frame), label);
+
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
 
@@ -280,7 +402,9 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-/********************CALLBACKS********************/
+
+/********************LOOPS********************/
+
 
 /*
  * select_row_callback - Callback for select_row
@@ -291,6 +415,9 @@ void select_row_callback(GtkWidget *clist, gint row, gint column, GdkEventButton
   return;
 }
 
+/*
+ * select_row_callback - Search process in GTK clist
+ */
 void search_proc(GtkButton *button, gpointer data) {
   const gchar *entry_txt;
   gchar *txt;
@@ -306,6 +433,9 @@ void search_proc(GtkButton *button, gpointer data) {
   return;
 }
 
+/*
+ * select_row_callback - Kill process clicked
+ */
 void kill_proc(void) {
   char buf[20];
   if (now_pid != NULL) {
@@ -326,7 +456,180 @@ void refresh_proc(void) {
   return;
 }
 
+/*
+ * cpu_curve_callback - Refresh the CPU use curve once every second
+ */
+gboolean cpu_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+  draw_cpu_curve((gpointer)widget);
+  g_timeout_add(1000, (GtkFunction)draw_cpu_curve, (gpointer)widget);
+  return TRUE;
+}
+
+
+/********************CALLBACKS********************/
+
+/*
+ * draw_cpu_curve - Draw CPU curve
+ */
+gboolean draw_cpu_curve(gpointer widget) {
+  GtkWidget *cpu_curve = (GtkWidget *)widget;
+  GdkColor color;
+  GdkGC *gc = cpu_curve->style->fg_gc[GTK_WIDGET_STATE(widget)];
+  static int flag = 0;
+  static int now_pos = 0;
+  int draw_pos = 0;
+
+  /* Darw background */
+  color.red = 0;
+  color.green = 0;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  gdk_draw_rectangle(cpu_curve->window, gc, TRUE, 20, 30, 480, 200);
+
+  /* Draw background lines */
+  color.red = 0;
+  color.green = 20000;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  for (int i = 30; i <= 220; i += 20)
+    gdk_draw_line(cpu_curve->window, gc, 20, i, 500, i);
+  for (int i = 20; i <= 500; i += 20)
+    gdk_draw_line(cpu_curve->window, gc, i + cpu_curve_start, 30, i + cpu_curve_start, 230);
+  
+  /* Settle cpu curve start position to make it live */
+  cpu_curve_start -= 4;
+  if (cpu_curve_start == 0)
+    cpu_curve_start = 20;
+
+  /* Initial data */
+  if (flag == 0) {
+    for (int i = 0; i < 120; i++) {
+      cpu_ratio_data[i] = 0;
+      flag = 1;
+    }
+  }
+
+  /* Add data */
+  cpu_ratio_data[now_pos] = cpu_ratio / 100;
+  now_pos++;
+  if (now_pos == 120)
+    now_pos = 0;
+    
+  /* Draw lines */
+  color.red = 0;
+	color.green = 65535;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+  draw_pos = now_pos;
+  for (int i = 0; i < 119; i++) {
+    gdk_draw_line(cpu_curve->window, gc,
+                  20 + i * 4, 230 - 170 * cpu_ratio_data[draw_pos % 120],
+                  20 + (i + 1) * 4, 230 - 170 * cpu_ratio_data[(draw_pos + 1) % 120]);
+    draw_pos++;
+    if (draw_pos == 120)
+      draw_pos = 0;
+  }
+
+  /* Reset the color */
+  color.red = 0;
+	color.green = 0;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+
+  /* To loop this function, it must return TRUE */
+  return TRUE;
+}
+
+/*
+ * get_cpu_ratio - Get CPU use ratio from /proc/stat
+ */
+gboolean get_cpu_ratio(gpointer label) {
+  /*
+   * stat file format
+   * 
+   * cpu user nice system idle iowait
+   * 
+   * t1, t2: Two near moments
+   * cpu(total) = user+nice+system+idle+iowait
+   * pcpu = 100 *(total – idle) / total
+   * total =total(t2) – total(t1)
+   * idle =idle(t2) – idle(t1)
+   */
+  /* Data holder */
+  static long old_idle, old_total;
+  static int flag = 0;
+
+  long user, nice, system, idle, iowait, total;
+  long total_diff, idle_diff;
+  char cpu[10], buffer[256], cpu_ratio_char[256];
+  int fd;
+  fd = open("/proc/stat", O_RDONLY);
+  read(fd, buffer, sizeof(buffer));
+  close(fd);
+  sscanf(buffer, "%s %ld %ld %ld %ld %ld", cpu, &user, &nice, &system, &idle, &iowait);
+
+  /* First */
+  if (flag == 0) {
+    flag = 1;
+    old_idle = idle;
+    old_total = user + nice + system + idle + iowait;
+    cpu_ratio = 0;
+  }
+  /* Others */
+  else {
+    total = user + nice + system + idle + iowait;
+    total_diff = total - old_total;
+    idle_diff = idle - old_idle;
+    cpu_ratio = 100 * (total_diff - idle_diff) / total_diff;
+    total = old_total;
+    idle = old_idle;
+  }
+  sprintf(cpu_ratio_char, "CPU usage: %0.1f%%", cpu_ratio);
+  gtk_label_set_text(GTK_LABEL(label), cpu_ratio_char);
+  return TRUE;
+}
+
+gboolean get_cpu_mhz(gpointer label) {
+  int fd;
+  char info_buf[1024];
+  char info_str[1024];
+  char cpu_freq_char[256];
+  char *pos = NULL;
+  int i;
+  fd = open("/proc/cpuinfo", O_RDONLY);
+  read(fd, info_buf, sizeof(info_buf));
+  close(fd);
+
+  /* Read CPU mhz */
+  i = 0;
+  pos = strstr(info_buf, "cpu MHz");
+  while (*pos != ':')
+    pos++;
+  pos += 2;
+
+  while (*pos != '\n') {
+    info_str[i] = *pos;
+    i++;
+    pos++;
+  }
+  info_str[i] = '\0';
+  strcpy(cpu_freq, info_str);
+  sprintf(cpu_freq_char, "CPU frequency: %s MHz", cpu_freq);
+  gtk_label_set_text(GTK_LABEL(label), cpu_freq_char);
+  return TRUE;
+}
+
 /********************ASSISTS********************/
+
+
+/*
+ * utf8_fix - To settle waring: Invalid UTF-8 string passed to pango_layout_set_text()
+ * 
+ * Referencing from: https://stackoverflow.com/questions/43753260/pango-warning-invalid-utf-8-string-passed-to-pango-layout-set-text-in-gtk
+ */
+char* utf8_fix(char *c) {
+  return g_locale_to_utf8(c, -1, NULL, NULL, NULL);
+}
 
 /*
  * scroll_to_line - To set the scroll window position
@@ -348,4 +651,5 @@ void scroll_to_line(gpointer scrolled_window, gint line_num, gint to_line_index)
   if (to_value > max_value)
     to_value = max_value;
   gtk_adjustment_set_value(adj, to_value);
+  return;
 }
