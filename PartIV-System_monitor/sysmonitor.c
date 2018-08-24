@@ -248,6 +248,8 @@ int main(int argc, char **argv) {
   GtkWidget *scrolled_window;
   GtkWidget *frame;
   GtkWidget *cpu_use;
+  GtkWidget *mem_use;
+  GtkWidget *swap_use;
   GtkWidget *button1;
   GtkWidget *button2;
   GtkWidget *button3;
@@ -331,8 +333,8 @@ int main(int argc, char **argv) {
   gtk_box_pack_start(GTK_BOX(hbox), cpu_use, TRUE, FALSE, 5);
 
   hbox = gtk_hbox_new(FALSE, 0);
-  label1 = gtk_label_new("Test 1");
-  label2 = gtk_label_new("Test 2");
+  label1 = gtk_label_new("");
+  label2 = gtk_label_new("");
   gtk_box_pack_start(GTK_BOX(hbox), label1, TRUE, FALSE, 5);
   gtk_box_pack_start(GTK_BOX(hbox), label2, TRUE, FALSE, 5);
   g_timeout_add(1000, (GtkFunction)get_cpu_ratio, (gpointer)label1);
@@ -368,8 +370,55 @@ int main(int argc, char **argv) {
    */
   sprintf(title_buf, "Memory");
   vbox = gtk_vbox_new(FALSE, 0);
-  button1 = gtk_button_new_with_label("Page 3");
-  gtk_container_add(GTK_CONTAINER(vbox), button1);
+
+  /* Create frame to show curve of memory use */
+  hbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+  mem_use = gtk_frame_new("Memory Use");
+  gtk_container_set_border_width(GTK_CONTAINER(mem_use), 5);
+  gtk_widget_set_size_request(mem_use, 520, 250);
+  gtk_box_pack_start(GTK_BOX(hbox), mem_use, TRUE, FALSE, 5);
+
+  hbox = gtk_hbox_new(FALSE, 0);
+  label1 = gtk_label_new("");
+  label2 = gtk_label_new("");
+  gtk_box_pack_start(GTK_BOX(hbox), label1, TRUE, FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(hbox), label2, TRUE, FALSE, 5);
+  g_timeout_add(1000, (GtkFunction)get_memory_ratio, (gpointer)label1);
+  g_timeout_add(1000, (GtkFunction)get_memory_fraction, (gpointer)label2);
+  gtk_widget_set_size_request(hbox, 550, 20);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+
+  /* Draw Memory use curve */
+  mem_curve = gtk_drawing_area_new();
+  gtk_widget_set_size_request(mem_curve, 0, 0);
+  g_signal_connect(G_OBJECT(mem_curve), "expose_event", G_CALLBACK(mem_curve_callback), NULL);
+  gtk_container_add(GTK_CONTAINER(mem_use), mem_curve);
+
+  /* Create frame to show curve of swap use */
+  hbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+  swap_use = gtk_frame_new("Swap Use");
+  gtk_container_set_border_width(GTK_CONTAINER(swap_use), 5);
+  gtk_widget_set_size_request(swap_use, 520, 250);
+  gtk_box_pack_start(GTK_BOX(hbox), swap_use, TRUE, FALSE, 5);
+
+  hbox = gtk_hbox_new(FALSE, 0);
+  label1 = gtk_label_new("");
+  label2 = gtk_label_new("");
+  gtk_box_pack_start(GTK_BOX(hbox), label1, TRUE, FALSE, 5);
+  gtk_box_pack_start(GTK_BOX(hbox), label2, TRUE, FALSE, 5);
+  g_timeout_add(1000, (GtkFunction)get_swap_ratio, (gpointer)label1);
+  g_timeout_add(1000, (GtkFunction)get_swap_fraction, (gpointer)label2);
+  gtk_widget_set_size_request(hbox, 550, 20);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, FALSE, 5);
+
+  /* Draw Swap use curve */
+  swap_curve = gtk_drawing_area_new();
+  gtk_widget_set_size_request(swap_curve, 0, 0);
+  g_signal_connect(G_OBJECT(swap_curve), "expose_event", G_CALLBACK(swap_curve_callback), NULL);
+  gtk_container_add(GTK_CONTAINER(swap_use), swap_curve);
+
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
 
@@ -403,7 +452,7 @@ int main(int argc, char **argv) {
 }
 
 
-/********************LOOPS********************/
+/********************CALLBACKS********************/
 
 
 /*
@@ -460,13 +509,43 @@ void refresh_proc(void) {
  * cpu_curve_callback - Refresh the CPU use curve once every second
  */
 gboolean cpu_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+  static int flag = 0;
   draw_cpu_curve((gpointer)widget);
-  g_timeout_add(1000, (GtkFunction)draw_cpu_curve, (gpointer)widget);
+  if (flag == 0) {
+    g_timeout_add(1000, (GtkFunction)draw_cpu_curve, (gpointer)widget);
+    flag = 1;
+  }
+  return TRUE;
+}
+
+/*
+ * cpu_curve_callback - Refresh the Memory use curve once every second
+ */
+gboolean mem_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+  static int flag = 0;
+  draw_mem_curve((gpointer)widget);
+  if (flag == 0) {
+    g_timeout_add(1000, (GtkFunction)draw_mem_curve, (gpointer)widget);
+    flag = 1;
+  }
+  return TRUE;
+}
+
+/*
+ * swap_curve_callback - Refresh the Swap use curve once every second
+ */
+gboolean swap_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data) {
+  static int flag = 0;
+  draw_swap_curve((gpointer)widget);
+  if (flag == 0) {
+    g_timeout_add(1000, (GtkFunction)draw_swap_curve, (gpointer)widget);
+    flag = 1;
+  }
   return TRUE;
 }
 
 
-/********************CALLBACKS********************/
+/********************LOOPS********************/
 
 /*
  * draw_cpu_curve - Draw CPU curve
@@ -484,7 +563,7 @@ gboolean draw_cpu_curve(gpointer widget) {
   color.green = 0;
   color.blue = 0;
   gdk_gc_set_rgb_fg_color(gc, &color);
-  gdk_draw_rectangle(cpu_curve->window, gc, TRUE, 20, 30, 480, 200);
+  gdk_draw_rectangle(cpu_curve->window, gc, TRUE, 15, 30, 480, 200);
 
   /* Draw background lines */
   color.red = 0;
@@ -492,10 +571,10 @@ gboolean draw_cpu_curve(gpointer widget) {
   color.blue = 0;
   gdk_gc_set_rgb_fg_color(gc, &color);
   for (int i = 30; i <= 220; i += 20)
-    gdk_draw_line(cpu_curve->window, gc, 20, i, 500, i);
-  for (int i = 20; i <= 500; i += 20)
+    gdk_draw_line(cpu_curve->window, gc, 15, i, 495, i);
+  for (int i = 15; i <= 480; i += 20)
     gdk_draw_line(cpu_curve->window, gc, i + cpu_curve_start, 30, i + cpu_curve_start, 230);
-  
+
   /* Settle cpu curve start position to make it live */
   cpu_curve_start -= 4;
   if (cpu_curve_start == 0)
@@ -523,8 +602,152 @@ gboolean draw_cpu_curve(gpointer widget) {
   draw_pos = now_pos;
   for (int i = 0; i < 119; i++) {
     gdk_draw_line(cpu_curve->window, gc,
-                  20 + i * 4, 230 - 170 * cpu_ratio_data[draw_pos % 120],
-                  20 + (i + 1) * 4, 230 - 170 * cpu_ratio_data[(draw_pos + 1) % 120]);
+                  15 + i * 4, 230 - 200 * cpu_ratio_data[draw_pos % 120],
+                  15 + (i + 1) * 4, 230 - 200 * cpu_ratio_data[(draw_pos + 1) % 120]);
+    draw_pos++;
+    if (draw_pos == 120)
+      draw_pos = 0;
+  }
+
+  /* Reset the color */
+  color.red = 0;
+	color.green = 0;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+
+  /* To loop this function, it must return TRUE */
+  return TRUE;
+}
+
+/*
+ * draw_mem_curve - Draw CPU curve
+ */
+gboolean draw_mem_curve(gpointer widget) {
+  GtkWidget *mem_curve = (GtkWidget *)widget;
+  GdkColor color;
+  GdkGC *gc = mem_curve->style->fg_gc[GTK_WIDGET_STATE(widget)];
+  static int flag = 0;
+  static int now_pos = 0;
+  int draw_pos = 0;
+
+  /* Darw background */
+  color.red = 0;
+  color.green = 0;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  gdk_draw_rectangle(mem_curve->window, gc, TRUE, 15, 10, 480, 200);
+
+  /* Draw background lines */
+  color.red = 0;
+  color.green = 20000;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  for (int i = 10; i <= 230; i += 20)
+    gdk_draw_line(mem_curve->window, gc, 15, i, 495, i);
+  for (int i = 15; i <= 480; i += 20)
+    gdk_draw_line(mem_curve->window, gc, i + mem_curve_start, 10, i + mem_curve_start, 210);
+
+  /* Settle memory curve start position to make it live */
+  mem_curve_start -= 4;
+  if (mem_curve_start == 0)
+    mem_curve_start = 20;
+
+  /* Initial data */
+  if (flag == 0) {
+    for (int i = 0; i < 120; i++) {
+      mem_ratio_data[i] = 0;
+      flag = 1;
+    }
+  }
+
+  /* Add data */
+  mem_ratio_data[now_pos] = mem_ratio / 100;
+  now_pos++;
+  if (now_pos == 120)
+    now_pos = 0;
+  
+  /* Draw lines */
+  color.red = 0;
+	color.green = 65535;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+  draw_pos = now_pos;
+  for (int i = 0; i < 119; i++) {
+    gdk_draw_line(mem_curve->window, gc,
+                  15 + i * 4, 210 - 200 * mem_ratio_data[draw_pos % 120],
+                  15 + (i + 1) * 4, 210 - 200 * mem_ratio_data[(draw_pos + 1) % 120]);
+    draw_pos++;
+    if (draw_pos == 120)
+      draw_pos = 0;
+  }
+
+  /* Reset the color */
+  color.red = 0;
+	color.green = 0;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+
+  /* To loop this function, it must return TRUE */
+  return TRUE;
+}
+
+/*
+ * draw_swap_curve - Draw CPU curve
+ */
+gboolean draw_swap_curve(gpointer widget) {
+  GtkWidget *swap_curve = (GtkWidget *)widget;
+  GdkColor color;
+  GdkGC *gc = swap_curve->style->fg_gc[GTK_WIDGET_STATE(widget)];
+  static int flag = 0;
+  static int now_pos = 0;
+  int draw_pos = 0;
+
+  /* Darw background */
+  color.red = 0;
+  color.green = 0;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  gdk_draw_rectangle(swap_curve->window, gc, TRUE, 15, 10, 480, 200);
+
+  /* Draw background lines */
+  color.red = 0;
+  color.green = 20000;
+  color.blue = 0;
+  gdk_gc_set_rgb_fg_color(gc, &color);
+  for (int i = 10; i <= 230; i += 20)
+    gdk_draw_line(swap_curve->window, gc, 15, i, 495, i);
+  for (int i = 15; i <= 480; i += 20)
+    gdk_draw_line(swap_curve->window, gc, i + mem_curve_start, 10, i + mem_curve_start, 210);
+
+  /* Settle memory curve start position to make it live */
+  swap_curve_start -= 4;
+  if (swap_curve_start == 0)
+    swap_curve_start = 20;
+
+  /* Initial data */
+  if (flag == 0) {
+    for (int i = 0; i < 120; i++) {
+      swap_ratio_data[i] = 0;
+      flag = 1;
+    }
+  }
+
+  /* Add data */
+  swap_ratio_data[now_pos] = swap_ratio / 100;
+  now_pos++;
+  if (now_pos == 120)
+    now_pos = 0;
+
+  /* Draw lines */
+  color.red = 0;
+	color.green = 65535;
+	color.blue = 0;
+	gdk_gc_set_rgb_fg_color(gc, &color);
+  draw_pos = now_pos;
+  for (int i = 0; i < 119; i++) {
+    gdk_draw_line(swap_curve->window, gc,
+                  15 + i * 4, 210 - 200 * swap_ratio_data[draw_pos % 120],
+                  15 + (i + 1) * 4, 210 - 200 * swap_ratio_data[(draw_pos + 1) % 120]);
     draw_pos++;
     if (draw_pos == 120)
       draw_pos = 0;
@@ -560,7 +783,7 @@ gboolean get_cpu_ratio(gpointer label) {
   static int flag = 0;
 
   long user, nice, system, idle, iowait, total;
-  long total_diff, idle_diff;
+  float total_diff, idle_diff;
   char cpu[10], buffer[256], cpu_ratio_char[256];
   int fd;
   fd = open("/proc/stat", O_RDONLY);
@@ -589,6 +812,9 @@ gboolean get_cpu_ratio(gpointer label) {
   return TRUE;
 }
 
+/*
+ * get_cpu_mhz - Get CPU freqency from /proc/cpuinfo line 8
+ */
 gboolean get_cpu_mhz(gpointer label) {
   int fd;
   char info_buf[1024];
@@ -618,6 +844,139 @@ gboolean get_cpu_mhz(gpointer label) {
   gtk_label_set_text(GTK_LABEL(label), cpu_freq_char);
   return TRUE;
 }
+
+/*
+ * get_memory_ratio - Get memory use ratio in /proc/meminfo
+ */
+gboolean get_memory_ratio(gpointer label) {
+  int fd;
+  char mem_buf[1024];
+  char mem_total_char[1024];
+  char mem_free_char[1024];
+  char mem_ratio_char[1024];
+  char *pos = NULL;
+  int i;
+  fd = open("/proc/meminfo", O_RDONLY);
+  read(fd, mem_buf, sizeof(mem_buf));
+  close(fd);
+
+  /* Read memory total */
+  i = 0;
+  pos = strstr(mem_buf, "MemTotal");
+  while (*pos != ':')
+    pos++;
+  pos += 1;
+  while (*pos == ' ')
+    pos++;
+
+  while (*pos != ' ') {
+    mem_total_char[i] = *pos;
+    i++;
+    pos++;
+  }
+  mem_total_char[i] = '\0';
+  mem_total = atof(mem_total_char) / (1024 * 1024);
+
+  /* Read memory free */
+  i = 0;
+  pos = strstr(mem_buf, "MemFree");
+  while (*pos != ':')
+    pos++;
+  pos += 1;
+  while (*pos == ' ')
+    pos++;
+
+  while (*pos != ' ') {
+    mem_free_char[i] = *pos;
+    i++;
+    pos++;
+  }
+  mem_free_char[i] = '\0';
+  mem_free = atof(mem_free_char) / (1024 * 1024);
+
+  /* Get memory use ratio */
+  mem_ratio = 100 - (mem_free / mem_total) * 100;
+  sprintf(mem_ratio_char, "Memory usage: %0.1f%%", mem_ratio);
+  gtk_label_set_text(GTK_LABEL(label), mem_ratio_char);
+  return TRUE;
+}
+
+/*
+ * get_memory_fraction - Set memory use fraction
+ */
+gboolean get_memory_fraction(gpointer label) {
+  char mem_fraction[1024];
+  sprintf(mem_fraction, "%0.2f / %0.2f GB", mem_total - mem_free, mem_total);
+  gtk_label_set_text(GTK_LABEL(label), mem_fraction);
+  return TRUE;
+}
+
+/*
+ * get_swap_ratio - Get sawp use ratio in /proc/meminfo
+ */
+gboolean get_swap_ratio(gpointer label) {
+  int fd;
+  char swap_buf[1024];
+  char swap_total_char[1024];
+  char swap_free_char[1024];
+  char swap_ratio_char[1024];
+  char *pos = NULL;
+  int i;
+  fd = open("/proc/meminfo", O_RDONLY);
+  read(fd, swap_buf, sizeof(swap_buf));
+  close(fd);
+
+  /* Read swap total */
+  i = 0;
+  pos = strstr(swap_buf, "SwapTotal");
+  while (*pos != ':')
+    pos++;
+  pos += 1;
+  while (*pos == ' ')
+    pos++;
+
+  while (*pos != ' ') {
+    swap_total_char[i] = *pos;
+    i++;
+    pos++;
+  }
+  swap_total_char[i] = '\0';
+  swap_total = atof(swap_total_char) / (1024 * 1024);
+
+  /* Read swap free */
+  i = 0;
+  pos = strstr(swap_buf, "SwapFree");
+  while (*pos != ':')
+    pos++;
+  pos += 1;
+  while (*pos == ' ')
+    pos++;
+
+  while (*pos != ' ') {
+    swap_free_char[i] = *pos;
+    i++;
+    pos++;
+  }
+  swap_free_char[i] = '\0';
+  swap_free = atof(swap_free_char) / (1024 * 1024);
+
+  /* Get swap use ratio */
+  swap_ratio = 100 - (swap_free / swap_total) * 100;
+  sprintf(swap_ratio_char, "Swap usage: %0.1f%%", swap_ratio);
+  gtk_label_set_text(GTK_LABEL(label), swap_ratio_char);
+  return TRUE;
+}
+
+/*
+ * get_swap_fraction - Set swap use fraction
+ */
+gboolean get_swap_fraction(gpointer label) {
+  char swap_fraction[1024];
+  sprintf(swap_fraction, "%0.2f / %0.2f GB", swap_total - swap_free, swap_total);
+  gtk_label_set_text(GTK_LABEL(label), swap_fraction);
+  return TRUE;
+}
+
 
 /********************ASSISTS********************/
 
