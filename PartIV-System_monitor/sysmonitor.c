@@ -110,6 +110,7 @@ void get_process_info(void) {
   int fd;
   char pid_file[1024];
   char stat_file[1024];
+  char *one_file = NULL;
   char info[6][1024];
   gchar *txt[6];
 
@@ -141,15 +142,74 @@ void get_process_info(void) {
       sprintf(pid_file, "/proc/%s/stat", dir_info->d_name);
       fd = open(pid_file, O_RDONLY);
       read(fd, stat_file, 1024);
-      read_stat(info, stat_file);
+      close(fd);
+      one_file = stat_file;
+      read_stat(info, one_file);
       for (int i = 0; i < 6; i++)
         txt[i] = utf8_fix(info[i]);
-      close(fd);
       gtk_clist_append(GTK_CLIST(clist), txt);
       process_num++;
     }
   }
   closedir(dir);
+}
+
+void get_modules_info(void) {
+  FILE *fp;
+  char modules_info[1024];
+  char *line = NULL;
+  char info[3][1024];
+  gchar *txt[3];
+  int pos = 0;
+
+  /* Set clist column title */
+  gtk_clist_set_column_title(GTK_CLIST(clist2), 0, "Module name");
+  gtk_clist_set_column_title(GTK_CLIST(clist2), 1, "Memory use");
+  gtk_clist_set_column_title(GTK_CLIST(clist2), 2, "Used Times");
+
+  /* Set clist column width */
+  gtk_clist_set_column_width(GTK_CLIST(clist2), 0, 250);
+  gtk_clist_set_column_width(GTK_CLIST(clist2), 1, 150);
+  gtk_clist_set_column_width(GTK_CLIST(clist2), 2, 150);
+  gtk_clist_column_titles_show(GTK_CLIST(clist2));
+
+  fp = fopen("/proc/modules", "r");
+
+  while ((line =fgets(modules_info, 1024, fp)) != NULL) {
+    /* Read modules name */
+    for (pos = 0; pos < 1024; pos++) {
+      if (line[pos] == ' ')
+        break;
+    }
+    line[pos] = '\0';
+    strcpy(info[0], line);
+    pos++;
+    line += pos;
+
+    /* Read modules memory use */
+    for (pos = 0; pos < 1024; pos++) {
+      if (line[pos] == ' ')
+        break;
+    }
+    line[pos] = '\0';
+    strcpy(info[1], line);
+    pos++;
+    line += pos;
+    
+    /* Read modules name */
+    for (pos = 0; pos < 1024; pos++) {
+      if (line[pos] == ' ')
+        break;
+    }
+    line[pos] = '\0';
+    strcpy(info[2], line);
+
+    for (int i = 0; i < 3; i++)
+      txt[i] = utf8_fix(info[i]);
+    
+    gtk_clist_append(GTK_CLIST(clist2), txt);
+  }
+  fclose(fp);
 }
 
 /*
@@ -253,6 +313,7 @@ int main(int argc, char **argv) {
   GtkWidget *button1;
   GtkWidget *button2;
   GtkWidget *button3;
+  GtkWidget *fixed;
 
   /* Save page title */
   char title_buf[1024];
@@ -424,12 +485,30 @@ int main(int argc, char **argv) {
 
 
   /*
-   * Page 4: Network
+   * Page 4: Modules
    */
-  sprintf(title_buf, "Network");
+  sprintf(title_buf, "Modules");
   vbox = gtk_vbox_new(FALSE, 0);
-  button1 = gtk_button_new_with_label("Page 4");
-  gtk_container_add(GTK_CONTAINER(vbox), button1);
+  
+  /* Create scrolled window for modules info */
+  scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+  gtk_widget_set_size_request(scrolled_window, 550, 500);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+
+  /* Create list with 3 columus */
+  clist2 = gtk_clist_new(3);
+  get_modules_info();
+  gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scrolled_window), clist2);
+  gtk_box_pack_start(GTK_BOX(vbox), scrolled_window, TRUE, TRUE, 5);
+
+  /* Create buttons */
+  fixed = gtk_fixed_new();
+  button1 = gtk_button_new_with_label("Refresh");
+  g_signal_connect(G_OBJECT(button1), "clicked", G_CALLBACK(refresh_modules), NULL);
+  gtk_widget_set_size_request(button1, 80, 30);
+  gtk_fixed_put(GTK_FIXED(fixed), button1, 450, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), fixed, FALSE, FALSE, 5);
+
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
 
@@ -486,10 +565,20 @@ void search_proc(GtkButton *button, gpointer data) {
  * select_row_callback - Kill process clicked
  */
 void kill_proc(void) {
-  char buf[20];
+  int ret;
   if (now_pid != NULL) {
-    sprintf(buf, "kill -9 %s", now_pid);
-    system(buf);
+    ret = kill(atoi(now_pid), SIGKILL);
+    if (ret == -EPERM) {
+      popup_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+      popup_label = gtk_label_new("You need root privilege\n   to kill this process!");
+      PangoFontDescription *desc_info = pango_font_description_from_string("14");
+      gtk_widget_modify_font(popup_label, desc_info);
+      pango_font_description_free(desc_info);
+      gtk_widget_set_size_request(popup_window, 300, 180);
+      gtk_container_add(GTK_CONTAINER(popup_window), popup_label);
+      gtk_window_set_title(GTK_WINDOW(popup_window), "ERROR!");
+      gtk_widget_show_all(popup_window);
+    }
   }
   return;
 }
@@ -502,6 +591,7 @@ void refresh_proc(void) {
   gtk_clist_clear(GTK_CLIST(clist));
   get_process_info();
   gtk_clist_thaw(GTK_CLIST(clist));
+  gtk_clist_select_row(GTK_CLIST(clist), 0, 0);
   return;
 }
 
@@ -544,6 +634,17 @@ gboolean swap_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer 
   return TRUE;
 }
 
+/*
+ * refresh_modules - Refresh the modules info in clist
+ */
+void refresh_modules(void) {
+  gtk_clist_freeze(GTK_CLIST(clist2));
+  gtk_clist_clear(GTK_CLIST(clist2));
+  get_modules_info();
+  gtk_clist_thaw(GTK_CLIST(clist2));
+  gtk_clist_select_row(GTK_CLIST(clist2), 0, 0);
+  return;
+}
 
 /********************LOOPS********************/
 
@@ -610,9 +711,9 @@ gboolean draw_cpu_curve(gpointer widget) {
   }
 
   /* Reset the color */
-  color.red = 0;
-	color.green = 0;
-	color.blue = 0;
+  color.red = 25000;
+	color.green = 25000;
+	color.blue = 25000;
 	gdk_gc_set_rgb_fg_color(gc, &color);
 
   /* To loop this function, it must return TRUE */
@@ -620,7 +721,7 @@ gboolean draw_cpu_curve(gpointer widget) {
 }
 
 /*
- * draw_mem_curve - Draw CPU curve
+ * draw_mem_curve - Draw Memory use curve
  */
 gboolean draw_mem_curve(gpointer widget) {
   GtkWidget *mem_curve = (GtkWidget *)widget;
@@ -682,9 +783,9 @@ gboolean draw_mem_curve(gpointer widget) {
   }
 
   /* Reset the color */
-  color.red = 0;
-	color.green = 0;
-	color.blue = 0;
+  color.red = 25000;
+	color.green = 25000;
+	color.blue = 25000;
 	gdk_gc_set_rgb_fg_color(gc, &color);
 
   /* To loop this function, it must return TRUE */
@@ -692,7 +793,7 @@ gboolean draw_mem_curve(gpointer widget) {
 }
 
 /*
- * draw_swap_curve - Draw CPU curve
+ * draw_swap_curve - Draw Swap use curve
  */
 gboolean draw_swap_curve(gpointer widget) {
   GtkWidget *swap_curve = (GtkWidget *)widget;

@@ -21,7 +21,7 @@ make
 ## Part I: Linux basics
 
 1. Implement a program to copy file.
-2. Implement a fork demo using GTK+
+2. Implement a fork demo using GTK+ 2.0
 
 ## Part II: Syscall
 

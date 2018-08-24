@@ -14,9 +14,12 @@
 
 
 /* Global variables */
+GtkWidget *popup_window;
+GtkWidget *popup_label;
 char *now_pid = NULL;       /* Hold the pid clicked by mouse */
-gint process_num = 0;       /* Hold the process num */
-GtkWidget *clist;           /* Hold the process info */
+gint process_num = 0;       /* Hold the Process num */
+GtkWidget *clist;           /* Hold the Process info */
+GtkWidget *clist2;          /* Hold the Modules info */
 GtkWidget *entry;           /* Hold the input */
 float cpu_ratio = 0;        /* Hold the CPU use ratio */
 float cpu_ratio_data[120];  /* Hold the CPU use ratio histories */
@@ -34,7 +37,7 @@ GtkWidget *mem_curve;       /* Hold the Memory use curve */
 GtkWidget *swap_curve;      /* Hold the Swap use curve */
 int cpu_curve_start = 20;   /* Hold the CPU use curve start position */
 int mem_curve_start = 20;   /* Hold the CPU use curve start position */
-int swap_curve_start = 20;   /* Hold the CPU use curve start position */
+int swap_curve_start = 20;  /* Hold the CPU use curve start position */
 
 
 /* Callback functions */
@@ -45,6 +48,7 @@ void refresh_proc(void);
 gboolean cpu_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data);
 gboolean mem_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data);
 gboolean swap_curve_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data);
+void refresh_modules(void);
 
 /* Loop functions */
 gboolean draw_cpu_curve(gpointer widget);
