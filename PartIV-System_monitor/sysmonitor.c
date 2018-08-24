@@ -305,6 +305,7 @@ int main(int argc, char **argv) {
   GtkWidget *label;
   GtkWidget *label1;
   GtkWidget *label2;
+  GtkWidget *label3;
   GtkWidget *scrolled_window;
   GtkWidget *frame;
   GtkWidget *cpu_use;
@@ -517,9 +518,27 @@ int main(int argc, char **argv) {
    * Page 5: System info
    */
   sprintf(title_buf, "System");
-  vbox = gtk_vbox_new(FALSE, 0);
-  button1 = gtk_button_new_with_label("Page 5");
-  gtk_container_add(GTK_CONTAINER(vbox), button1);
+  vbox = gtk_vbox_new(FALSE, 20);
+
+  frame = gtk_frame_new("System Information");
+  label1 = gtk_label_new("");
+  gtk_container_add(GTK_CONTAINER(frame), label1);
+  g_timeout_add(1000, (GtkFunction)get_sys_info, (gpointer)label1);
+  gtk_widget_set_size_request(frame, 550, 200);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
+  frame = gtk_frame_new("Network");
+  label2 = gtk_label_new("");
+  gtk_container_add(GTK_CONTAINER(frame), label2);
+  //g_timeout_add(1000, (GtkFunction)get_network_info, (gpointer)label2);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
+  frame = gtk_frame_new("Disk");
+  label3 = gtk_label_new("");
+  gtk_container_add(GTK_CONTAINER(frame), label3);
+  //g_timeout_add(1000, (GtkFunction)get_disk_info, (gpointer)label3);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
 
@@ -1078,6 +1097,99 @@ gboolean get_swap_fraction(gpointer label) {
   return TRUE;
 }
 
+/*
+ * get_sys_info - Set system information
+ */
+gboolean get_sys_info(gpointer label) {
+  int fd;
+  FILE *fp;
+  int i, j;
+  char buffer[1024];
+  char *pos = NULL;
+  char host_name[128];
+  char os_name[128];
+  int os_type;
+  char kernel_version[128];
+  char gcc_version[128];
+  int setup_time;
+  int uphour, upminute, upsecond;
+
+  /* Get host name */
+  fp = fopen("/etc/hostname", "r");
+  fgets(host_name, sizeof(host_name), fp);
+  fclose(fp);
+
+  /* Get os name */
+  memset(buffer, 0, sizeof(buffer));
+  fd = open("/etc/issue", O_RDONLY);
+  read(fd, buffer, sizeof(buffer));
+  close(fd);
+  for (i = 0; i < 1024; i++) {
+    if (buffer[i] == '\\')
+      break;
+  }
+  buffer[i - 1] = '\0';
+  strcpy(os_name, buffer);
+
+  /* Get os type */
+  os_type = sizeof(char *) * 8;
+
+  /* Get kernel version */
+  fp = fopen("/proc/sys/kernel/osrelease", "r");
+  fgets(kernel_version, sizeof(kernel_version), fp);
+  fclose(fp);
+
+  /* Get gcc version */
+  memset(buffer, 0, sizeof(buffer));
+  fd = open("/proc/version", O_RDONLY);
+  read(fd, buffer, sizeof(buffer));
+  close(fd);
+  pos = strstr(buffer, "gcc version");
+  for (i = 0, j = 0; i < 1024; i++) {
+    if (*pos == ' ')
+      j++;
+    if (j == 2)
+      break;
+    pos++;
+  }
+  pos++;
+  for (i = 0; i < 1024; i++) {
+    if (pos[i] == ' ')
+      break;
+    gcc_version[i] = pos[i];
+  }
+  gcc_version[i] = '\0';
+
+  /* Get setuo time */
+  memset(buffer, 0, sizeof(buffer));
+  fd = open("/proc/uptime", O_RDONLY);
+  read(fd, buffer, sizeof(buffer));
+  close(fd);
+  for (i = 0; i < 1024; i++) {
+    if (buffer[i] == ' ')
+      break;
+  }
+  buffer[i] = '\0';
+  setup_time = atoi(buffer);
+  upsecond = setup_time % 60;
+  upminute = (setup_time / 60) % 60;
+  uphour = setup_time / 3600;
+
+  sprintf(buffer, "Hostname:          %s\n\
+OS Name:           %s\n\n\
+OS Type:             %d-bit\n\n\
+Kernel Version:    %s\n\
+GCC Version:       %s\n\n\
+Uptime:              %02d:%02d:%02d",
+          host_name, os_name, os_type, kernel_version, gcc_version, uphour, upminute, upsecond);
+  
+  gtk_label_set_text(GTK_LABEL(label), buffer);
+  PangoFontDescription *desc_info = pango_font_description_from_string("14");
+  gtk_widget_modify_font((GtkWidget*)label, desc_info);
+  pango_font_description_free(desc_info);
+
+  return TRUE;
+}
 
 /********************ASSISTS********************/
 

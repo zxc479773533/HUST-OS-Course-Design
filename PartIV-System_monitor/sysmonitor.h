@@ -60,6 +60,7 @@ gboolean get_memory_ratio(gpointer label);
 gboolean get_memory_fraction(gpointer label);
 gboolean get_swap_ratio(gpointer label);
 gboolean get_swap_fraction(gpointer label);
+gboolean get_sys_info(gpointer label);
 
 /* Assist functions */
 char *utf8_fix(char *c);
