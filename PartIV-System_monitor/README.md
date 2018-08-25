@@ -78,14 +78,14 @@ We need 1st, 2nd, 3rd data for modules name, used memory and used times.
 
 ### Get data
 
-The system information can be found as follows
+The system information can be found as follows:
 
-* Hostname  `/etc/hostnames`.
-* OS Name  `/etc/issue`.
-* OS Type `sizeof(char *) * 8`;
-* Kernel Version `/proc/sys/kernel/osrelease`.
-* GCC Version can be found `/proc/version`.
-* Uptime can be found `/proc/uptime`.
+* Hostname:  `/etc/hostnames`.
+* OS Name:  `/etc/issue`.
+* OS Type:  `sizeof(char *) * 8`;
+* Kernel Version:  `/proc/sys/kernel/osrelease`.
+* GCC Version:  `/proc/version`.
+* Uptime:  `/proc/uptime`.
 
 The Network information can be found in `/proc/net/dev`.
 
