@@ -29,7 +29,7 @@ Adding a system call to copy file in linux kernel.
 
 Here I use ***Arch Linux x86_64*** and ***kernel 4.17.8***, it may be a little diffient from the way it used to be on ***Ubuntu*** or ***Linux kernel version <= 4.15*** because of the fucking NVIDIA. I need to install the Kernel Image manually, and fix the NVIDIA driver after install the new kernel.
 
-The details can be seen [here](PartII-Syscall) (README in Part II)
+The details can be seen [here](PartII-Syscall)
 
 ## Part III: Character Device driver
 
@@ -37,7 +37,7 @@ Implement a character device driver by linux kernel module.
 
 Here I added read, write, lseek, ioctl(for clear) functions. And the device driver can auto create and delete device file when load or unload the module.
 
-The details can be seen [here](PartIII-Device_driver) (README in Part III)
+The details can be seen [here](PartIII-Device_driver)
 
 ## Part IV: Implement a system monitor
 
@@ -45,7 +45,10 @@ Here I use GTK+ 2.0 for the graphical interface.
 
 Information got from `/proc` and `/etc`.
 
+Here are two screenshot for the system monitor.
+
+The details can be seen [here](PartIV-System_monitor)
+
 <div align="center">
-  <img src="image/process.png">
-  <img src="image/cpu.png">
+  <img src="image/process.png">&nbsp;&nbsp;&nbsp;&nbsp;<img src="image/cpu.png">
 </div>
