@@ -1193,7 +1193,7 @@ gboolean get_sys_info(gpointer label) {
   }
   gcc_version[i] = '\0';
 
-  /* Get setuo time */
+  /* Get setup time */
   memset(buffer, 0, sizeof(buffer));
   fd = open("/proc/uptime", O_RDONLY);
   read(fd, buffer, sizeof(buffer));

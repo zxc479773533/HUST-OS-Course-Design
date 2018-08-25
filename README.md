@@ -41,6 +41,16 @@ The details can be seen [here](PartIII-Device_driver)
 
 ## Part IV: Implement a system monitor
 
+My system monitor functions:
+
+* Show Process information, search or kill processes.
+* Show CPU basic parameters, utilization and frequency, utilization. The utilization rate is represented by a graph.
+* Show Memory and Swap file usage with graph.
+* Show Modules information.
+* Show OS basic parameters.
+* Show Network upload and download speed.
+* Show Disk read and write speed.
+
 Here I use GTK+ 2.0 for the graphical interface.
 
 Information got from `/proc` and `/etc`.
