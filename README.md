@@ -38,3 +38,14 @@ Implement a character device driver by linux kernel module.
 Here I added read, write, lseek, ioctl(for clear) functions. And the device driver can auto create and delete device file when load or unload the module.
 
 The details can be seen [here](PartIII-Device_driver) (README in Part III)
+
+## Part IV: Implement a system monitor
+
+Here I use GTK+ 2.0 for the graphical interface.
+
+Information got from `/proc` and `/etc`.
+
+<div align="center">
+  <img src="image/process.png">
+  <img src="image/cpu.png">
+</div>
