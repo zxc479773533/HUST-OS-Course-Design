@@ -315,6 +315,7 @@ int main(int argc, char **argv) {
   GtkWidget *button2;
   GtkWidget *button3;
   GtkWidget *fixed;
+  GtkWidget *image;
 
   /* Save page title */
   char title_buf[1024];
@@ -418,9 +419,7 @@ int main(int argc, char **argv) {
   sprintf(buffer1, "CPU Type and Frequency :\n%s\n\nAddressing digit : %s\n\nCache size : %s\n\nCPU Core : %s\n",
                     cpu_name, cpu_addr_digit, cpu_cache_size, cpu_core);
   label = gtk_label_new(buffer1);
-  PangoFontDescription *desc_info = pango_font_description_from_string("12");
-  gtk_widget_modify_font(label, desc_info);
-  pango_font_description_free(desc_info);
+  set_label_fontsize(label, "12");
   gtk_container_add(GTK_CONTAINER(frame), label);
 
   label = gtk_label_new(title_buf);
@@ -544,6 +543,40 @@ int main(int argc, char **argv) {
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
 
+
+  /*
+   * Page 5: Author info
+   */
+  sprintf(title_buf, "About");
+  vbox = gtk_vbox_new(FALSE, 0);
+
+  frame = gtk_frame_new("About Author");
+  hbox = gtk_hbox_new(FALSE, 0);
+  sprintf(buffer1, "\n\n\n\n%15s: %-25s\n\n%15s: %-25s\n\n%15s: %-25s\n\n\n\n", "Auther", "zxcpyp", "Github", "zxc479773533", "e-mail", "zxc479773533@gmail.com");
+  label = gtk_label_new(buffer1);
+  set_label_fontsize(label, "14");
+  gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, FALSE, 5);
+  image = gtk_image_new_from_file(AUTHOR);
+  gtk_box_pack_start(GTK_BOX(hbox), image, TRUE, FALSE, 5);
+  gtk_container_add(GTK_CONTAINER(frame), hbox);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+
+  frame = gtk_frame_new("About Version");
+  sprintf(buffer1, "\n\nVersion v1.2.0\n\n\
+Copyright (C) 2018 Pan Yue\n\
+School of Computer Science and Technology\n\
+Huazhong University of Science and Technology\n\n\n");
+  label = gtk_label_new(buffer1);
+  set_label_fontsize(label, "14");
+  gtk_container_add(GTK_CONTAINER(frame), label);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+
+  label = gtk_label_new("For HUST Operating System Curriculum Design 2018 Summer");
+  gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, FALSE, 5);
+
+  label = gtk_label_new(title_buf);
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
+
   /* GTK show */
   gtk_widget_show_all(top_window);
   gtk_main();
@@ -592,9 +625,7 @@ void kill_proc(void) {
     if (ret == -EPERM) {
       popup_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
       popup_label = gtk_label_new("You need root privilege\n   to kill this process!");
-      PangoFontDescription *desc_info = pango_font_description_from_string("14");
-      gtk_widget_modify_font(popup_label, desc_info);
-      pango_font_description_free(desc_info);
+      set_label_fontsize(popup_label, "14");
       gtk_widget_set_size_request(popup_window, 300, 180);
       gtk_container_add(GTK_CONTAINER(popup_window), popup_label);
       gtk_window_set_title(GTK_WINDOW(popup_window), "ERROR!");
@@ -895,7 +926,7 @@ gboolean get_cpu_ratio(gpointer label) {
    * cpu user nice system idle iowait
    * 
    * t1, t2: Two near moments
-   * cpu(total) = user+nice+system+idle+iowait
+   * cpu(total) = user+nice+system+idle
    * pcpu = 100 *(total – idle) / total
    * total =total(t2) – total(t1)
    * idle =idle(t2) – idle(t1)
@@ -904,25 +935,25 @@ gboolean get_cpu_ratio(gpointer label) {
   static long old_idle, old_total;
   static int flag = 0;
 
-  long user, nice, system, idle, iowait, total;
+  long user, nice, system, idle, total;
   float total_diff, idle_diff;
   char cpu[10], buffer[256], cpu_ratio_char[256];
   int fd;
   fd = open("/proc/stat", O_RDONLY);
   read(fd, buffer, sizeof(buffer));
   close(fd);
-  sscanf(buffer, "%s %ld %ld %ld %ld %ld", cpu, &user, &nice, &system, &idle, &iowait);
+  sscanf(buffer, "%s %ld %ld %ld %ld", cpu, &user, &nice, &system, &idle);
 
   /* First */
   if (flag == 0) {
     flag = 1;
     old_idle = idle;
-    old_total = user + nice + system + idle + iowait;
+    old_total = user + nice + system + idle;
     cpu_ratio = 0;
   }
   /* Others */
   else {
-    total = user + nice + system + idle + iowait;
+    total = user + nice + system + idle;
     total_diff = total - old_total;
     idle_diff = idle - old_idle;
     cpu_ratio = 100 * (total_diff - idle_diff) / total_diff;
@@ -1186,9 +1217,7 @@ Uptime:              %02d:%02d:%02d",
           host_name, os_name, os_type, kernel_version, gcc_version, uphour, upminute, upsecond);
   
   gtk_label_set_text(GTK_LABEL(label), buffer);
-  PangoFontDescription *desc_info = pango_font_description_from_string("13");
-  gtk_widget_modify_font((GtkWidget*)label, desc_info);
-  pango_font_description_free(desc_info);
+  set_label_fontsize((GtkWidget *)label, "13");
 
   return TRUE;
 }
@@ -1255,9 +1284,7 @@ gboolean get_network_info(gpointer label) {
 \t  Total upload: %7.1f MB\t\t  Total download: %7.1f MB",
           send_speed, receive_speed, send_byte / (1024.0 * 1024.0), receive_byte / (1024.0 * 1024.0));
   gtk_label_set_text(GTK_LABEL(label), buffer);
-  PangoFontDescription *desc_info = pango_font_description_from_string("13");
-  gtk_widget_modify_font((GtkWidget*)label, desc_info);
-  pango_font_description_free(desc_info);
+  set_label_fontsize((GtkWidget *)label, "13");
 
   return TRUE;
 }
@@ -1320,9 +1347,7 @@ gboolean get_disk_info(gpointer label) {
 \t  Total Read: %7.1f GB\t\t  Total Write: %7.1f GB",
           read_speed, write_speed, (rd_sectors * 512) / (1024.0 * 1024.0 * 1024.0), (wr_sectors * 512) / (1024.0 * 1024.0 * 1024.0));
   gtk_label_set_text(GTK_LABEL(label), buffer);
-  PangoFontDescription *desc_info = pango_font_description_from_string("13");
-  gtk_widget_modify_font((GtkWidget*)label, desc_info);
-  pango_font_description_free(desc_info);
+  set_label_fontsize((GtkWidget *)label, "13");
 
   return TRUE;
 }
@@ -1360,4 +1385,15 @@ void scroll_to_line(gpointer scrolled_window, gint line_num, gint to_line_index)
     to_value = max_value;
   gtk_adjustment_set_value(adj, to_value);
   return;
+}
+
+/*
+ * set_label_fontsize - To set font size in a label
+ * 
+ * Referencing from: https://blog.csdn.net/gl_ding/article/details/4939355
+ */
+void set_label_fontsize(GtkWidget *label, char *fontsize) {
+  PangoFontDescription *desc_info = pango_font_description_from_string(fontsize);
+  gtk_widget_modify_font(label, desc_info);
+  pango_font_description_free(desc_info);
 }

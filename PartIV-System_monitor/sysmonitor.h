@@ -12,6 +12,8 @@
 #include <dirent.h>
 #include <gtk/gtk.h>
 
+/* Set author face picture */
+#define AUTHOR "../PartIV-System_monitor/data/author.jpg"
 
 /* Global variables */
 GtkWidget *popup_window;
@@ -70,3 +72,4 @@ gboolean get_disk_info(gpointer label);
 /* Assist functions */
 char *utf8_fix(char *c);
 void scroll_to_line(gpointer scrolled_window, gint line_num, gint to_line_index);
+void set_label_fontsize(GtkWidget *label, char *fontsize);
