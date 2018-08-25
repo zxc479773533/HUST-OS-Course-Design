@@ -38,7 +38,10 @@ GtkWidget *swap_curve;      /* Hold the Swap use curve */
 int cpu_curve_start = 20;   /* Hold the CPU use curve start position */
 int mem_curve_start = 20;   /* Hold the CPU use curve start position */
 int swap_curve_start = 20;  /* Hold the CPU use curve start position */
-
+float receive_speed = 0;    /* Hold the Network receive speed */
+float send_speed = 0;       /* Hold the Network send speed */
+float read_speed = 0;       /* Hold the Disk read speed */
+float write_speed = 0;      /* Hold the Disk write speed */
 
 /* Callback functions */
 void select_row_callback(GtkWidget *clist, gint row, gint column, GdkEventButton *event, gpointer data);
@@ -61,6 +64,8 @@ gboolean get_memory_fraction(gpointer label);
 gboolean get_swap_ratio(gpointer label);
 gboolean get_swap_fraction(gpointer label);
 gboolean get_sys_info(gpointer label);
+gboolean get_network_info(gpointer label);
+gboolean get_disk_info(gpointer label);
 
 /* Assist functions */
 char *utf8_fix(char *c);

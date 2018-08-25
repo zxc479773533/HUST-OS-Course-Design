@@ -175,7 +175,7 @@ void get_modules_info(void) {
 
   fp = fopen("/proc/modules", "r");
 
-  while ((line =fgets(modules_info, 1024, fp)) != NULL) {
+  while ((line = fgets(modules_info, sizeof(modules_info), fp)) != NULL) {
     /* Read modules name */
     for (pos = 0; pos < 1024; pos++) {
       if (line[pos] == ' ')
@@ -518,26 +518,28 @@ int main(int argc, char **argv) {
    * Page 5: System info
    */
   sprintf(title_buf, "System");
-  vbox = gtk_vbox_new(FALSE, 20);
+  vbox = gtk_vbox_new(FALSE, 10);
 
   frame = gtk_frame_new("System Information");
   label1 = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(frame), label1);
   g_timeout_add(1000, (GtkFunction)get_sys_info, (gpointer)label1);
-  gtk_widget_set_size_request(frame, 550, 200);
-  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+  gtk_widget_set_size_request(frame, 550, 300);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
 
   frame = gtk_frame_new("Network");
   label2 = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(frame), label2);
-  //g_timeout_add(1000, (GtkFunction)get_network_info, (gpointer)label2);
-  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+  g_timeout_add(2000, (GtkFunction)get_network_info, (gpointer)label2);
+  gtk_widget_set_size_request(frame, 550, 180);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 0);
 
   frame = gtk_frame_new("Disk");
   label3 = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(frame), label3);
-  //g_timeout_add(1000, (GtkFunction)get_disk_info, (gpointer)label3);
-  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+  g_timeout_add(2000, (GtkFunction)get_disk_info, (gpointer)label3);
+  gtk_widget_set_size_request(frame, 550, 180);
+  gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 0);
 
   label = gtk_label_new(title_buf);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
@@ -1184,7 +1186,141 @@ Uptime:              %02d:%02d:%02d",
           host_name, os_name, os_type, kernel_version, gcc_version, uphour, upminute, upsecond);
   
   gtk_label_set_text(GTK_LABEL(label), buffer);
-  PangoFontDescription *desc_info = pango_font_description_from_string("14");
+  PangoFontDescription *desc_info = pango_font_description_from_string("13");
+  gtk_widget_modify_font((GtkWidget*)label, desc_info);
+  pango_font_description_free(desc_info);
+
+  return TRUE;
+}
+
+/*
+ * get_network_info - Get network information in /proc/net/dev
+ */
+gboolean get_network_info(gpointer label) {
+  /*
+   * Network dev file format:
+   * 
+   * Inter-|   Receive                                                |  Transmit
+   *  face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+   *   dev1: ...
+   *   dev2: ...
+   *   ...
+   */
+  FILE *fp;
+  long r_byte, s_byte;
+  long receive_byte, send_byte;
+  float receive_diff, send_diff;
+  static long old_receive, old_send;
+  static int flag = 0;
+  char buffer[256];
+  char *pos;
+
+  fp = fopen("/proc/net/dev", "r");
+  fgets(buffer, sizeof(buffer), fp);
+  fgets(buffer, sizeof(buffer), fp);
+
+  receive_byte = 0;
+  send_byte = 0;
+
+  while ((pos = fgets(buffer, sizeof(buffer), fp)) != NULL) {
+    while (*pos != ':')
+      pos++;
+    pos++;
+    sscanf(pos, "%ld %*d %*d %*d %*d %*d %*d %*d %ld", &r_byte, &s_byte);
+    receive_byte += r_byte;
+    send_byte += s_byte;
+  }
+  fclose(fp);
+
+  if (flag == 0) {
+    old_receive = receive_byte;
+    old_send = send_byte;
+    receive_diff = 0;
+    send_diff = 0;
+    flag = 1;
+  }
+  else {
+    receive_diff = receive_byte - old_receive;
+    send_diff = send_byte - old_send;
+    old_receive = receive_byte;
+    old_send = send_byte;
+  }
+
+  /* Count speed (KB) */
+  receive_speed = receive_diff / (1024 * 2);
+  send_speed = send_diff / (1024 * 2);
+
+  sprintf(buffer, "    Network Speed:\n\n\
+\tUpload speed: %7.1f KB/s\tDownload speed: %7.1f KB/s\n\n\
+\t  Total upload: %7.1f MB\t\t  Total download: %7.1f MB",
+          send_speed, receive_speed, send_byte / (1024.0 * 1024.0), receive_byte / (1024.0 * 1024.0));
+  gtk_label_set_text(GTK_LABEL(label), buffer);
+  PangoFontDescription *desc_info = pango_font_description_from_string("13");
+  gtk_widget_modify_font((GtkWidget*)label, desc_info);
+  pango_font_description_free(desc_info);
+
+  return TRUE;
+}
+
+/*
+ * get_disk_info - Get network information in /proc/diskstat
+ */
+gboolean get_disk_info(gpointer label) {
+  /*
+   * Disk status file format:
+   * 
+   * 8 num sdx rd_ios rd_merges rd_sectors rd_ticks wr_ios wr_merges wr_sectors \
+   *  wr_ticks in_flight io_ticks time_in_queue
+   * 
+   * read speed = (Δrd_sectors/Δt) * (block_size / 1024)
+   * write speed = (Δwr_sectors/Δt) * (block_size / 1024)
+   * Here block_size is 512
+   */
+  FILE *fp;
+  long rd_sector, wr_sector;
+  long rd_sectors, wr_sectors;
+  float rd_diff, wr_diff;
+  static long old_rd_sectors, old_wr_sectors;
+  static int flag = 0;
+  char buffer[256];
+  char *pos;
+
+  fp = fopen("/proc/diskstats", "r");
+
+  rd_sectors = 0;
+  wr_sectors = 0;
+
+  while((pos = fgets(buffer, sizeof(buffer), fp)) != NULL) {
+    sscanf(buffer, "%*d %*d %*s %*d %*d %d %*d %*d %*d %d", &rd_sector, &wr_sector);
+    rd_sectors += rd_sector;
+    wr_sectors += wr_sector;
+  }
+  fclose(fp);
+
+  if (flag == 0) {
+    old_rd_sectors = rd_sectors;
+    old_wr_sectors = wr_sectors;
+    rd_diff = 0;
+    wr_diff = 0;
+    flag = 1;
+  }
+  else {
+    rd_diff = rd_sectors - old_rd_sectors;
+    wr_diff = wr_sectors - old_wr_sectors;
+    old_rd_sectors = rd_sectors;
+    old_wr_sectors = wr_sectors;
+  }
+
+  /* Count speed (MB) */
+  read_speed = (rd_diff * 512) / (2 * 1024 * 1024);
+  write_speed = (wr_diff * 512) / (2 * 1024 * 1024);
+
+  sprintf(buffer, "Disk I/O Speed:\n\n\
+\tRead speed: %7.1f MB/s\t\tWrite speed: %7.1f MB/s\n\n\
+\t  Total Read: %7.1f GB\t\t  Total Write: %7.1f GB",
+          read_speed, write_speed, (rd_sectors * 512) / (1024.0 * 1024.0 * 1024.0), (wr_sectors * 512) / (1024.0 * 1024.0 * 1024.0));
+  gtk_label_set_text(GTK_LABEL(label), buffer);
+  PangoFontDescription *desc_info = pango_font_description_from_string("13");
   gtk_widget_modify_font((GtkWidget*)label, desc_info);
   pango_font_description_free(desc_info);
 
