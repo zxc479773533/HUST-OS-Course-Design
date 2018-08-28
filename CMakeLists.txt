@@ -31,3 +31,9 @@ add_executable(testdev ./PartIII-Device_driver/testdev.c)
 aux_source_directory(./PartIV-System_monitor sysmonitor)
 add_executable(py_sysmonitor ${sysmonitor})
 target_link_libraries(py_sysmonitor lib ${GTK2_LIBRARIES})
+
+# Build Part V
+
+aux_source_directory(./PartV-File_system_simulation fs)
+add_executable(zxcpypfs ${fs})
+target_link_libraries(py_sysmonitor lib)
