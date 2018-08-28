@@ -84,6 +84,7 @@ extern char path[128];
 
 /* Developer functions */
 void reset_disk();
+void print_current_user_id(void);
 void print_current_inode_id(void);
 void print_current_dir_num(void);
 void show_files_info();

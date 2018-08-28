@@ -25,6 +25,10 @@ int developer_cmd(int argc, char **argv) {
     reset_disk();
     return 1;
   }
+  if (!strcmp(argv[0], "puid")) {
+    print_current_user_id();
+    return 1;
+  }
   if (!strcmp(argv[0], "pino")) {
     print_current_inode_id();
     return 1;
@@ -99,7 +103,7 @@ int py_execute(char *func , int argc, char **argv) {
     else if (ret == FS_ISNOT_DIR)
       printf("rmdir: Fail to delete \"%s\": Not a directory\n", argv[1]);
     else if (ret == FS_DIR_NOEMPTY)
-      printf("rmdir: Fail to delete \"%s\": Insufficient privilege\n", argv[1]);
+      printf("rmdir: Fail to delete \"%s\": Directory not empty\n", argv[1]);
     return 1;
   }
   else if (argc == 2 && !strcmp(func, "cd")) {

@@ -54,6 +54,14 @@ void reset_disk(void) {
 }
 
 /*
+ * print_current_user_id - See the current user id
+ */
+void print_current_user_id(void) {
+  printf("%d\n", current_user_id);
+}
+
+
+/*
  * print_current_inode_id - See the current inode id
  */
 void print_current_inode_id(void) {
@@ -79,6 +87,7 @@ void show_files_info(void) {
     printf("pos: %d\n", pos);
     printf("name: %s\n", current_dir_content[pos].name);
     printf("inode id: %d\n", current_dir_content[pos].inode_id);
+    printf("user id: %d\n\n", node.user_id);
   }
   printf("\n");
 }
@@ -459,6 +468,7 @@ int dir_rm(int ino, int type, char *name) {
   if (rm_inode == current_dir_num)
     return FS_NO_EXIST;
 
+  rm_inode = current_dir_content[rm_inode].inode_id;
   /* Read inode information */
   fseek(disk, INODEPOS + rm_inode * INODESIZE, SEEK_SET);
   fread(&node, sizeof(node), 1, disk);
@@ -475,10 +485,10 @@ int dir_rm(int ino, int type, char *name) {
   if (ret == FS_IS_DIR) {
     dir_cd(ino, name);
     if (current_dir_num != 2) {
-      dir_cd(ino, "..");
+      dir_cd(rm_inode, "..");
       return FS_DIR_NOEMPTY;
     }
-    dir_cd(ino, "..");
+    dir_cd(rm_inode, "..");
   }
 
   int pos;
@@ -524,7 +534,7 @@ int dir_cd(int ino, char *path) {
   cd_inode = current_dir_content[i].inode_id;
 
   /* Check if this is a directory */
-  fseek(disk, INODEPOS + current_dir_content[cd_inode].inode_id * INODESIZE, SEEK_SET);
+  fseek(disk, INODEPOS + cd_inode * INODESIZE, SEEK_SET);
   fread(&node, sizeof(node), 1, disk);
   if (check_type(node.mode, TYPE_FILE) == FS_IS_FILE)
     return FS_ISNOT_DIR;

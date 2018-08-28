@@ -29,7 +29,6 @@ void print_version() {
 }
 
 int main(int argc, char **argv) {
-  printf("%ld\n", sizeof(super_block));
   int ret;
   print_version();
   disk = fopen(FS_PATH, "r+");
