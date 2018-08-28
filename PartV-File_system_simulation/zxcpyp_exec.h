@@ -9,6 +9,7 @@
  */
 
 #include "filesystem.h"
+#include <wait.h>
 
 /*
  * print_help - Print help messages
@@ -92,7 +93,7 @@ int py_execute(char *func , int argc, char **argv) {
       printf("mkdir: Fail to create directory \"%s\": No enough space\n", argv[1]);
     return 1;
   }
-  else if (argc == 2 && !strcmp(func, "rmdir")) {
+  if (argc == 2 && !strcmp(func, "rmdir")) {
     ret = dir_rm(current_inode_id, TYPE_DIR, argv[1]);
     if (ret == FS_INVALID)
       printf("rmdir: Fail to delete \"%s\": Invalid operation\n", argv[1]);
@@ -106,7 +107,7 @@ int py_execute(char *func , int argc, char **argv) {
       printf("rmdir: Fail to delete \"%s\": Directory not empty\n", argv[1]);
     return 1;
   }
-  else if (argc == 2 && !strcmp(func, "cd")) {
+  if (argc == 2 && !strcmp(func, "cd")) {
     int old_inode_id = current_inode_id;
     ret = dir_cd(current_inode_id, argv[1]);
     if (ret == FS_NO_EXIST)
@@ -117,7 +118,7 @@ int py_execute(char *func , int argc, char **argv) {
       path_change(old_inode_id, argv[1]);
     return 1;
   }
-  else if (argc == 2 && !strcmp(func, "touch")) {
+  if (argc == 2 && !strcmp(func, "touch")) {
     ret = dir_creat(current_inode_id, TYPE_FILE, argv[1]);
     if (ret == FS_FILE_EXIST)
       mtime_change(current_inode_id, argv[1]);
@@ -125,7 +126,7 @@ int py_execute(char *func , int argc, char **argv) {
       printf("touch: Fail to create file \"%s\": No enough space\n", argv[1]);
     return 1;
   }
-  else if (argc == 2 && !strcmp(func, "rm")) {
+  if (argc == 2 && !strcmp(func, "rm")) {
     ret = dir_rm(current_inode_id, TYPE_FILE, argv[1]);
     if (ret == FS_INVALID)
       printf("rmdir: Fail to delete \"%s\": Invalid operation\n", argv[1]);
@@ -135,6 +136,37 @@ int py_execute(char *func , int argc, char **argv) {
       printf("rmdir: Fail to delete \"%s\": Insufficient privilege\n", argv[1]);
     else if (ret == FS_ISNOT_FILE)
       printf("rmdir: Fail to delete \"%s\": Not a file\n", argv[1]);
+    return 1;
+  }
+  if (argc == 2 && !strcmp(func, "vim")) {
+    int pid, status;
+	  char *vim_arg[]={"vim", BUFFERFILE, NULL};
+    ret = file_open(current_inode_id, argv[1]);
+    if (ret == FS_IS_DIR) {
+      printf("vim: Fail to open \"%s\": Is a directory\n", argv[1]);
+      return 1;
+    }
+    else if (ret == FS_NO_EXIST) {
+      dir_creat(current_inode_id, TYPE_FILE, argv[1]);
+      file_open(current_inode_id, argv[1]);
+    }
+    if((pid = fork()) == 0) {
+			execvp("vim", vim_arg);
+		}
+    wait(&status);
+    file_close(current_inode_id, argv[1]);
+    return 1;
+  }
+  if (argc == 2 && !strcmp(func, "cat")) {
+    ret = file_open(current_inode_id, argv[1]);
+    if (ret == FS_IS_DIR)
+      printf("cat: \"%s\": Is a directory\n", argv[1]);
+    else if (ret == FS_NO_EXIST)
+      printf("cat: \"%s\": No such file or directory\n", argv[1]);
+    else {
+      file_cat();
+      file_close(current_inode_id, argv[1]);
+    }
     return 1;
   }
   return 0;

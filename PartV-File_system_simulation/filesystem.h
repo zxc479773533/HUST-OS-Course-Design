@@ -37,6 +37,8 @@
 #define DIRMAXINBLK (BLOCKSIZE / sizeof(directory)) /* Directory entry num per block */
 #define DIRMAXNUM (FILEBLKMAX * DIRMAXINBLK)        /* File num per directory */
 
+#define BUFFERFILE "/tmp/zxcpyp_disk_buf"
+
 /* File system data structures */
 typedef struct super_block {
   int inode_map[INODENUM];
@@ -117,6 +119,9 @@ int dir_creat(int ino, int type, char *name);
 int dir_rm(int ino, int type, char *name);
 int dir_cd(int ino, char *path);
 int dir_ls(void);
+int file_open(int ino, char *name);
+int file_close(int ino, char *name);
+int file_cat(void);
 
 /* Assist function */
 int oct2dec(int oct_number);

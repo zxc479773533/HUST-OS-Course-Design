@@ -565,6 +565,133 @@ int dir_ls(void) {
   return FS_OK;
 }
 
+/*
+ * file_open - Open a file, read its contains into buffer tmp file
+ */
+int file_open(int ino, char *name) {
+  int open_inode;
+  int bno, pos;
+  inode node;
+  char block[BLOCKSIZE];
+  FILE *buf_fp = fopen(BUFFERFILE, "w+");
+
+  /* Check if the directory or file exists */
+  for (open_inode = 0; open_inode < current_dir_num; open_inode++) {
+    if (strcmp(name, current_dir_content[open_inode].name) == 0)
+      break;
+  }
+  if (open_inode == current_dir_num)
+    return FS_NO_EXIST;
+
+  open_inode = current_dir_content[open_inode].inode_id;
+
+  /* Read inode information */
+  fseek(disk, INODEPOS + open_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Check type */
+  if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR)
+    return FS_IS_DIR;
+
+  if (node.size == 0) {
+    fclose(buf_fp);
+    return FS_OK;
+  }
+
+  /* Read data from disk */
+  for (pos = 0; pos < node.block_used_num - 1; pos++) {
+    memset(block, 0, BLOCKSIZE);
+    bno = node.block_used[pos];
+    fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+    fread(block, sizeof(char), BLOCKSIZE, disk);
+    fwrite(block, sizeof(char), BLOCKSIZE, buf_fp);
+    block_free(bno);
+    node.size -= BLOCKSIZE;
+  }
+  bno = node.block_used[pos];
+  fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+  fread(block, sizeof(char), node.size, disk);
+  fwrite(block, sizeof(char), node.size, buf_fp);
+  block_free(bno);
+  node.size = 0;
+  node.block_used_num = 0;
+
+  /* Save inode */
+  fseek(disk, INODEPOS + open_inode * INODESIZE, SEEK_SET);
+  fwrite(&node, sizeof(inode), 1, disk);
+
+  fclose(buf_fp);
+  return FS_OK;
+}
+
+/*
+ * file_close - Close a file, write buffer file contents to disk
+ */
+int file_close(int ino, char *name) {
+  int close_inode;
+  int bno, read_num;
+  inode node;
+  char block[BLOCKSIZE];
+  FILE *buf_fp = fopen(BUFFERFILE, "r");
+
+  /* Check if the directory or file exists */
+  for (close_inode = 0; close_inode < current_dir_num; close_inode++) {
+    if (strcmp(name, current_dir_content[close_inode].name) == 0)
+      break;
+  }
+  if (close_inode == current_dir_num)
+    return FS_NO_EXIST;
+
+  close_inode = current_dir_content[close_inode].inode_id;
+
+  /* Read inode information */
+  fseek(disk, INODEPOS + close_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Check type */
+  if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR)
+    return FS_ISNOT_FILE;
+  
+  /* Read data from buffer file */
+  memset(block, 0, BLOCKSIZE);
+  read_num = fread(block, sizeof(char), BLOCKSIZE, buf_fp);
+  while(read_num != 0) {
+    bno = block_alloc();
+    if (bno == FS_NO_BLOCK)
+      break;
+    fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+    fwrite(block, sizeof(char), BLOCKSIZE, disk);
+    node.block_used[node.block_used_num] = bno;
+    node.block_used_num++;
+    node.size += read_num;
+
+    memset(block, 0, BLOCKSIZE);
+    read_num = fread(block, sizeof(char), BLOCKSIZE, buf_fp);
+  }
+
+  /* Save inode */
+  fseek(disk, INODEPOS + close_inode * INODESIZE, SEEK_SET);
+  fwrite(&node, sizeof(inode), 1, disk);
+
+  fclose(buf_fp);
+  return FS_OK;
+}
+
+int file_cat(void) {
+  int read_num;
+  FILE *buf_fp = fopen(BUFFERFILE, "r");
+  char block[BLOCKSIZE];
+  memset(block, 0, BLOCKSIZE);
+
+  /* Read data from buffer file */
+  while((read_num = fread(block, sizeof(char), BLOCKSIZE, buf_fp) != 0))
+    printf("%s", block);
+
+  printf("\n");
+  fclose(buf_fp);
+  return FS_OK;
+}
+
 /********************ASSIST FUNCTIONS********************/
 
 /*
