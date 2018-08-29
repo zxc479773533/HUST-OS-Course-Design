@@ -113,7 +113,7 @@ void eval(char *cmdline) {
   if (!developer_cmd(argc, argv)) {
     if (!builtin_cmd(argv)) {
       if (!py_execute(argv[0], argc, argv))
-        printf("zxcpypsh: command not found.\n");
+        printf("zxcpypsh: command not found: %s\n", argv[0]);
       // else
         // printf("[INFO] Operation finished.\n\n");
     }

@@ -14,6 +14,7 @@
 #include "../lib/zxcpyp_sys.h"
 #include "fs_error.h"
 #include <time.h>
+#include <wait.h>
 
 /* Disk parameters */
 #define BLOCKSIZE 1024          /* The block size */
@@ -36,6 +37,9 @@
 
 #define DIRMAXINBLK (BLOCKSIZE / sizeof(directory)) /* Directory entry num per block */
 #define DIRMAXNUM (FILEBLKMAX * DIRMAXINBLK)        /* File num per directory */
+
+#define CAN_READ 0
+#define CAN_WRITE 1
 
 #define BUFFERFILE "/tmp/zxcpyp_disk_buf"
 
@@ -92,6 +96,7 @@ void print_current_dir_num(void);
 void show_files_info();
 void print_superblk_inode_info(int pos);
 void print_superblk_block_info(int pos);
+void show_users_info(void);
 
 /* Core function */
 int inode_alloc(void);
@@ -127,9 +132,12 @@ int file_cat(void);
 /* Assist function */
 int oct2dec(int oct_number);
 int check_name(char *name);
-int check_type(int mode, int type);
+int check_type(int ino, int type);
+int check_mode(int mode, int operation);
 void path_change(int old_inode_id, char *name);
 int mtime_change(int ino, char *name);
 void get_modestr(char *modstr, int mode);
+int mode_change(int mode, char *name);
+int check_if_readonly(int ino, char *name);
 
 #endif // !ZXCPYP_FILESYSTEM

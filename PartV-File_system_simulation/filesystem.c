@@ -84,12 +84,11 @@ void show_files_info(void) {
   for (pos = 0; pos < current_dir_num; pos++) {
     fseek(disk, INODEPOS + current_dir_content[pos].inode_id * INODESIZE, SEEK_SET);
     fread(&node, sizeof(node), 1, disk);
-    printf("pos: %d\n", pos);
-    printf("name: %s\n", current_dir_content[pos].name);
-    printf("inode id: %d\n", current_dir_content[pos].inode_id);
+    printf("pos: %d  ", pos);
+    printf("name: %-10s  ", current_dir_content[pos].name);
+    printf("inode id: %d  ", current_dir_content[pos].inode_id);
     printf("user id: %d\n\n", node.user_id);
   }
-  printf("\n");
 }
 
 /*
@@ -108,6 +107,22 @@ void print_superblk_block_info(int pos) {
   printf("Super block block:\n");
   printf("Pos %d: %d\n", pos, super.block_map[pos]);
   printf("Free num: %d\n", super.block_free_num);
+}
+
+void show_users_info(void) {
+  int pos;
+  sys_users all_users;
+
+  /* Read users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fread(&all_users, sizeof(sys_users), 1, disk);
+
+  for (pos = 0; pos < USERNUMMAX; pos++) {
+    if (all_users.user_map[pos] == 1) {
+      printf("User id: %d\n", pos);
+      printf("User id: %s\n\n", all_users.users[pos].user_name);
+    }
+  }
 }
 
 /********************CORE FUNCTIONS********************/
@@ -159,7 +174,7 @@ int init_dir_inode(int new_ino, int ino) {
   node.block_used[0] = bno;
   node.block_used_num = 1;
   node.size = 2 * sizeof(directory);
-  node.mode = oct2dec(175);
+  node.mode = oct2dec(1755);
   time_t timer;
 	time(&timer);
   node.creat_time = timer;
@@ -194,7 +209,7 @@ int init_file_inode(int new_ino) {
   /* Set new inode information */
   node.block_used_num = 0;
   node.size = 0;
-  node.mode = oct2dec(64);
+  node.mode = oct2dec(644);
   time_t timer;
 	time(&timer);
   node.creat_time = timer;
@@ -428,7 +443,7 @@ int format_disk(void) {
   current_inode.block_used[0] = 0;
   current_inode.block_used_num = 1;
   current_inode.size = 2 * sizeof(directory);
-  current_inode.mode = oct2dec(175);
+  current_inode.mode = oct2dec(1755);
   time_t timer;
 	time(&timer);
   current_inode.creat_time = timer;
@@ -530,6 +545,10 @@ int dir_creat(int ino, int type, char *name) {
     return FS_DIR_FULL;
   if (check_name(name) != FS_OK)
     return FS_FILE_EXIST;
+  
+  /* Check mode */
+  if (check_mode(ino, CAN_WRITE) == 0)
+    return FS_NO_PRIVILAGE;
 
   /* If need more blocks */
   if (current_dir_num / DIRMAXINBLK != (current_dir_num + 1) / DIRMAXINBLK)
@@ -568,6 +587,10 @@ int dir_rm(int ino, int type, char *name) {
   int rm_inode;
   int ret;
   inode node;
+
+  /* Check mode */
+  if (check_mode(ino, CAN_WRITE) == 0)
+    return FS_NO_PRIVILAGE;
 
   /* Can't delete . and .. */
   if (!strcmp(name, ".") || !strcmp(name, ".."))
@@ -632,14 +655,14 @@ int dir_rm(int ino, int type, char *name) {
 /*
  * dir_cd - Enter into a directory
  */
-int dir_cd(int ino, char *path) {
+int dir_cd(int ino, char *name) {
   int i;
   int cd_inode;
   inode node;
 
   /* Check if the directory or file exists */
   for (i = 0; i < current_dir_num; i++) {
-    if (strcmp(path, current_dir_content[i].name) == 0)
+    if (strcmp(current_dir_content[i].name, name) == 0)
       break;
   }
   if (i == current_dir_num)
@@ -651,6 +674,10 @@ int dir_cd(int ino, char *path) {
   fread(&node, sizeof(node), 1, disk);
   if (check_type(node.mode, TYPE_FILE) == FS_IS_FILE)
     return FS_ISNOT_DIR;
+  
+  /* Check mode */
+  if (check_mode(cd_inode, CAN_READ) == 0)
+    return FS_NO_PRIVILAGE;
 
   dir_close(ino);
   current_inode_id = cd_inode;
@@ -682,6 +709,9 @@ int dir_ls(void) {
   return FS_OK;
 }
 
+/*
+ * dir_ls_l - List all files and its information in a directory
+ */
 int dir_ls_l(void) {
   /* Save current status */
   dir_close(current_inode_id);
@@ -690,7 +720,7 @@ int dir_ls_l(void) {
   int pos;
   sys_users all_users;
   inode node;
-  char modstr[8];
+  char modstr[11];
   char *time;
 
   /* Read users inforation */
@@ -729,13 +759,17 @@ int file_open(int ino, char *name) {
 
   /* Check if the directory or file exists */
   for (open_inode = 0; open_inode < current_dir_num; open_inode++) {
-    if (strcmp(name, current_dir_content[open_inode].name) == 0)
+    if (strcmp(current_dir_content[open_inode].name, name) == 0)
       break;
   }
   if (open_inode == current_dir_num)
     return FS_NO_EXIST;
 
   open_inode = current_dir_content[open_inode].inode_id;
+
+  /* Check mode */
+  if (check_mode(open_inode, CAN_READ) == 0)
+    return FS_NO_PRIVILAGE;
 
   /* Read inode information */
   fseek(disk, INODEPOS + open_inode * INODESIZE, SEEK_SET);
@@ -788,7 +822,7 @@ int file_close(int ino, char *name) {
 
   /* Check if the directory or file exists */
   for (close_inode = 0; close_inode < current_dir_num; close_inode++) {
-    if (strcmp(name, current_dir_content[close_inode].name) == 0)
+    if (strcmp(current_dir_content[close_inode].name, name) == 0)
       break;
   }
   if (close_inode == current_dir_num)
@@ -839,7 +873,6 @@ int file_cat(void) {
   while((read_num = fread(block, sizeof(char), BLOCKSIZE, buf_fp) != 0))
     printf("%s", block);
 
-  printf("\n");
   fclose(buf_fp);
   return FS_OK;
 }
@@ -849,15 +882,16 @@ int file_cat(void) {
 /*
  * oct2dec - Change Octal number to decimal number
  * 
- * For this program use, only supply 0~777
+ * For this program use, only supply 0~7777
  */
 int oct2dec(int oct_number) {
   int dec_number = 0;
-  int a, b, c;
-  a = oct_number / 100;
-  b = (oct_number % 100) / 10;
-  c = oct_number % 10;
-  dec_number = c + b * 8 + a * 64;
+  int a, b, c, d;
+  a = oct_number / 1000;
+  b = (oct_number % 1000) / 100;
+  c = (oct_number % 100) / 10;
+  d = oct_number % 10;
+  dec_number = ((a * 8 + b) * 8 + c) * 8 + d;
   return dec_number;
 }
 
@@ -877,8 +911,8 @@ int check_name(char *name) {
  * check_type - Check file type
  */
 int check_type(int mode, int type) {
-  int isdir = mode & (1 << 6);
-  if (isdir == (1 << 6) && type == TYPE_FILE)
+  int isdir = mode & (1 << 9);
+  if (isdir == (1 << 9) && type == TYPE_FILE)
     return FS_ISNOT_FILE;
   else if (isdir == 0 && type == TYPE_DIR)
     return FS_ISNOT_DIR;
@@ -886,6 +920,31 @@ int check_type(int mode, int type) {
     return FS_IS_FILE;
   else
     return FS_IS_DIR;
+}
+
+/*
+ * check_mode - Check if user have privilege to do operation
+ */
+int check_mode(int ino, int operation) {
+  inode node;
+  int ret;
+
+  fseek(disk, INODEPOS + ino * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  if (operation == CAN_READ) {
+    if (node.user_id == current_user_id)
+      ret = ((node.mode & (1 << 8)) == (1 << 8));
+    else
+      ret = ((node.mode & (1 << 2)) == (1 << 2));
+  }
+  else {
+    if (node.user_id == current_user_id)
+      ret = ((node.mode & (1 << 7)) == (1 << 7));
+    else
+      ret = ((node.mode & (1 << 1)) == (1 << 1));
+  }
+  return ret;
 }
 
 /*
@@ -961,19 +1020,123 @@ int mtime_change(int ino, char *name) {
  * path_cd - Change path when enter a directory
  */
 void get_modestr(char *modstr, int mode) {
-  strcpy(modstr, "-------");
-  if ((mode & (1 << 6)) == (1 << 6))
+  strcpy(modstr, "----------");
+  if ((mode & (1 << 9)) == (1 << 9))
     modstr[0] = 'd';
-  if ((mode & (1 << 5)) == (1 << 5))
+  if ((mode & (1 << 8)) == (1 << 8))
     modstr[1] = 'r';
-  if ((mode & (1 << 4)) == (1 << 4))
+  if ((mode & (1 << 7)) == (1 << 7))
     modstr[2] = 'w';
-  if ((mode & (1 << 3)) == (1 << 3))
+  if ((mode & (1 << 6)) == (1 << 6))
     modstr[3] = 'x';
-  if ((mode & (1 << 2)) == (1 << 2))
+  if ((mode & (1 << 5)) == (1 << 5))
     modstr[4] = 'r';
-  if ((mode & (1 << 1)) == (1 << 1))
+  if ((mode & (1 << 4)) == (1 << 4))
     modstr[5] = 'w';
-  if ((mode & 1) == 1)
+  if ((mode & (1 << 3)) == (1 << 3))
     modstr[6] = 'x';
+  if ((mode & (1 << 2)) == (1 << 2))
+    modstr[7] = 'r';
+  if ((mode & (1 << 1)) == (1 << 1))
+    modstr[8] = 'w';
+  if ((mode & 1) == 1)
+    modstr[9] = 'x';
+}
+
+/*
+ * mode_change - Change a file's mode
+ */
+int mode_change(int mode, char *name) {
+  int i;
+  int change_inode;
+  inode node;
+
+  /* Invalid mode */
+  if (mode < 0 || mode > 777)
+    return FS_INVALID_MODE;
+
+  /* Check if the directory or file exists */
+  for (i = 0; i < current_dir_num; i++) {
+    if (strcmp(current_dir_content[i].name, name) == 0)
+      break;
+  }
+  if (i == current_dir_num)
+    return FS_NO_EXIST;
+  change_inode = current_dir_content[i].inode_id;
+
+  /* Check if this is a directory */
+  fseek(disk, INODEPOS + change_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Only owner can change the mode */
+  if (node.user_id != current_user_id)
+    return FS_NO_PRIVILAGE;
+
+  mode = oct2dec(mode);
+  mode |= (node.mode & (1 << 9));
+
+  node.mode = mode;
+
+  /* Save node data */
+  fseek(disk, INODEPOS + change_inode * INODESIZE, SEEK_SET);
+  fwrite(&node, sizeof(node), 1, disk);
+
+  return FS_OK;
+}
+
+int check_if_readonly(int ino, char *name) {
+  int pid, status;
+  int check_inode;
+  int bno, pos;
+  inode node;
+  char block[BLOCKSIZE];
+	char *vim_arg[] = {"vim", BUFFERFILE, NULL};
+  FILE *buf_fp = fopen(BUFFERFILE, "w+");
+
+  /* Check if the directory or file exists */
+  for (check_inode = 0; check_inode < current_dir_num; check_inode++) {
+    if (strcmp(current_dir_content[check_inode].name, name) == 0)
+      break;
+  }
+  if (check_inode == current_dir_num)
+    return FALSE;
+
+  check_inode = current_dir_content[check_inode].inode_id;
+
+  /* Check mode */
+  if (check_mode(check_inode, CAN_READ) == 0 || check_mode(check_inode, CAN_WRITE) == 1)
+    return FALSE;
+  
+  /* Read only */
+
+  /* Read inode information */
+  fseek(disk, INODEPOS + check_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Check type */
+  if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR)
+    return FALSE;
+
+  /* Read data from disk */
+  for (pos = 0; pos < node.block_used_num - 1; pos++) {
+    memset(block, 0, BLOCKSIZE);
+    bno = node.block_used[pos];
+    fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+    fread(block, sizeof(char), BLOCKSIZE, disk);
+    fwrite(block, sizeof(char), BLOCKSIZE, buf_fp);
+  }
+  bno = node.block_used[pos];
+  fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+  fread(block, sizeof(char), node.size, disk);
+  fwrite(block, sizeof(char), node.size, buf_fp);
+
+  fclose(buf_fp);
+
+  if((pid = fork()) == 0) {
+			execvp("vim", vim_arg);
+		}
+  wait(&status);
+  printf("vim: Fail to save \"%s\": Insufficient privilege\n", name);
+
+  return TRUE;
 }

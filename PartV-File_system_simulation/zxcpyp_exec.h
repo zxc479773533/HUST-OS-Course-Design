@@ -9,7 +9,6 @@
  */
 
 #include "filesystem.h"
-#include <wait.h>
 
 /*
  * print_help - Print help messages
@@ -40,6 +39,10 @@ int developer_cmd(int argc, char **argv) {
   }
   if (!strcmp(argv[0], "show")) {
     show_files_info();
+    return 1;
+  }
+  if (!strcmp(argv[0], "users")) {
+    show_users_info();
     return 1;
   }
   if (argc == 2 && !strcmp(argv[0], "superi")) {
@@ -96,6 +99,8 @@ int py_execute(char *func , int argc, char **argv) {
     ret = dir_creat(current_inode_id, TYPE_DIR, argv[1]);
     if (ret == FS_FILE_EXIST)
       printf("mkdir: Fail to create directory \"%s\": File already exists\n", argv[1]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("mkdir: Fail to create directory \"%s\": Insufficient privilege\n", argv[1]);
     else if (ret != FS_OK)
       printf("mkdir: Fail to create directory \"%s\": No enough space\n", argv[1]);
     return 1;
@@ -108,6 +113,8 @@ int py_execute(char *func , int argc, char **argv) {
     ret = dir_rm(current_inode_id, TYPE_DIR, argv[1]);
     if (ret == FS_INVALID)
       printf("rmdir: Fail to delete \"%s\": Invalid operation\n", argv[1]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("rmdir: Fail to delete \"%s\": Insufficient privilege\n", argv[1]);
     else if (ret == FS_NO_EXIST)
       printf("rmdir: Fail to delete \"%s\": File not exists\n", argv[1]);
     else if (ret == FS_NO_PRIVILAGE)
@@ -127,6 +134,8 @@ int py_execute(char *func , int argc, char **argv) {
     ret = dir_cd(current_inode_id, argv[1]);
     if (ret == FS_NO_EXIST)
       printf("cd: No such file or directory: \"%s\"\n", argv[1]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("cd: Insufficient privilege: \"%s\"\n", argv[1]);
     else if (ret == FS_ISNOT_DIR)
       printf("cd: Not a directory: \"%s\"\n", argv[1]);
     else if (ret == FS_OK)
@@ -148,6 +157,8 @@ int py_execute(char *func , int argc, char **argv) {
     ret = dir_creat(current_inode_id, TYPE_FILE, argv[1]);
     if (ret == FS_FILE_EXIST)
       mtime_change(current_inode_id, argv[1]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("touch: Fail to create file \"%s\": Insufficient privilege\n", argv[1]);
     else if (ret != FS_OK)
       printf("touch: Fail to create file \"%s\": No enough space\n", argv[1]);
     return 1;
@@ -174,14 +185,24 @@ int py_execute(char *func , int argc, char **argv) {
       return 1;
     }
     int pid, status;
-	  char *vim_arg[]={"vim", BUFFERFILE, NULL};
+	  char *vim_arg[] = {"vim", BUFFERFILE, NULL};
+    if (check_if_readonly(current_inode_id, argv[1]) == TRUE)
+      return 1;
     ret = file_open(current_inode_id, argv[1]);
     if (ret == FS_IS_DIR) {
       printf("vim: Fail to open \"%s\": Is a directory\n", argv[1]);
       return 1;
     }
+    else if (ret == FS_NO_PRIVILAGE) {
+      printf("vim: Fail to open \"%s\": Insufficient privilege\n", argv[1]);
+      return 1;
+    }
     else if (ret == FS_NO_EXIST) {
-      dir_creat(current_inode_id, TYPE_FILE, argv[1]);
+      ret = dir_creat(current_inode_id, TYPE_FILE, argv[1]);
+      if (ret == FS_NO_PRIVILAGE) {
+        printf("vim: Fail to creat \"%s\": Insufficient privilege\n", argv[1]);
+        return 1;
+      }
       file_open(current_inode_id, argv[1]);
     }
     if((pid = fork()) == 0) {
@@ -201,6 +222,8 @@ int py_execute(char *func , int argc, char **argv) {
       printf("cat: \"%s\": Is a directory\n", argv[1]);
     else if (ret == FS_NO_EXIST)
       printf("cat: \"%s\": No such file or directory\n", argv[1]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("cat: \"%s\": Insufficient privilege\n", argv[1]);
     else {
       file_cat();
       file_close(current_inode_id, argv[1]);
@@ -233,6 +256,20 @@ int py_execute(char *func , int argc, char **argv) {
       if (ret == FS_USER_NOT_EXIST)
         printf("userdel: Failed to delete user \"%s\": User not exists\n", argv[1]);
     }
+    return 1;
+  }
+  if (!strcmp(func, "chmod")) {
+    if (argc != 3) {
+      printf("Usage: userdel [mod] [filename]\n");
+      return 1;
+    }
+    ret = mode_change(atoi(argv[1]), argv[2]);
+    if (ret == FS_NO_PRIVILAGE)
+      printf("chmod: Change the permissions of \"%s\": Invalid operation\n", argv[2]);
+    else if (ret == FS_NO_EXIST)
+      printf("chmod: Unable to access \"%s\": No such file or directory\n", argv[2]);
+    else if (ret == FS_INVALID_MODE)
+      printf("chmod: Invalid operation: \"%s\"\n", argv[1]);
     return 1;
   }
   return 0;
