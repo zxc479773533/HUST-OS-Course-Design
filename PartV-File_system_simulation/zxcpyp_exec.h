@@ -59,11 +59,10 @@ int developer_cmd(int argc, char **argv) {
  */
 int builtin_cmd(char **argv) {
   if (!strcmp(argv[0], "fmt")) {
-    format_disk();
-    return 1;
-  }
-  if (!strcmp(argv[0], "ls")) {
-    dir_ls();
+    if (current_user_id == 0)
+      format_disk();
+    else
+      printf("fmt: You need root privilege!\n");
     return 1;
   }
   if (!strcmp(argv[0], "passwd")) {
@@ -134,6 +133,13 @@ int py_execute(char *func , int argc, char **argv) {
       path_change(old_inode_id, argv[1]);
     return 1;
   }
+  if (!strcmp(func, "ls")) {
+    if (argc == 2 && !strcmp(argv[1], "-l"))
+      dir_ls_l();
+    else
+      dir_ls();
+    return 1;
+  }
   if (!strcmp(func, "touch")) {
     if (argc != 2) {
       printf("Usage: touch [filename]\n");
@@ -148,7 +154,7 @@ int py_execute(char *func , int argc, char **argv) {
   }
   if (!strcmp(func, "rm")) {
     if (argc != 2) {
-      printf("Usage: touch [filename]\n");
+      printf("Usage: rm [filename]\n");
       return 1;
     }
     ret = dir_rm(current_inode_id, TYPE_FILE, argv[1]);

@@ -159,11 +159,11 @@ int init_dir_inode(int new_ino, int ino) {
   node.block_used[0] = bno;
   node.block_used_num = 1;
   node.size = 2 * sizeof(directory);
-  node.mode = oct2dec(1755);
+  node.mode = oct2dec(175);
   time_t timer;
 	time(&timer);
   node.creat_time = timer;
-  node.modify_time = 0;
+  node.modify_time = timer;
   node.user_id = current_user_id;
 
   /* Save inode information */
@@ -194,11 +194,11 @@ int init_file_inode(int new_ino) {
   /* Set new inode information */
   node.block_used_num = 0;
   node.size = 0;
-  node.mode = oct2dec(644);
+  node.mode = oct2dec(64);
   time_t timer;
 	time(&timer);
   node.creat_time = timer;
-  node.modify_time = 0;
+  node.modify_time = timer;
   node.user_id = current_user_id;
 
   /* Save inode information */
@@ -428,11 +428,11 @@ int format_disk(void) {
   current_inode.block_used[0] = 0;
   current_inode.block_used_num = 1;
   current_inode.size = 2 * sizeof(directory);
-  current_inode.mode = oct2dec(1755);
+  current_inode.mode = oct2dec(175);
   time_t timer;
 	time(&timer);
   current_inode.creat_time = timer;
-  current_inode.modify_time = 0;
+  current_inode.modify_time = timer;
   current_inode.user_id = 0;
 
   /* Set basic link of root file */
@@ -663,6 +663,10 @@ int dir_cd(int ino, char *path) {
  * dir_ls - List all files in directory
  */
 int dir_ls(void) {
+  /* Save current status */
+  dir_close(current_inode_id);
+  dir_open(current_inode_id);
+
   int pos;
   inode node;
   for (pos = 0; pos < current_dir_num; pos++) {
@@ -674,6 +678,41 @@ int dir_ls(void) {
       printf("%s\t", current_dir_content[pos].name);
   }
   printf("\n");
+
+  return FS_OK;
+}
+
+int dir_ls_l(void) {
+  /* Save current status */
+  dir_close(current_inode_id);
+  dir_open(current_inode_id);
+
+  int pos;
+  sys_users all_users;
+  inode node;
+  char modstr[8];
+  char *time;
+
+  /* Read users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fread(&all_users, sizeof(sys_users), 1, disk);
+
+  for (pos = 0; pos < current_dir_num; pos++) {
+    fseek(disk, INODEPOS + current_dir_content[pos].inode_id * INODESIZE, SEEK_SET);
+    fread(&node, sizeof(node), 1, disk);
+
+    get_modestr(modstr, node.mode);
+    time = ctime(&node.modify_time);
+
+    if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR) {
+      printf("%s  %-s \e[1;34m%6ld\e[0m %.12s \e[1;34m%-s\e[0m\n",
+             modstr, all_users.users[current_user_id].user_name, node.size / sizeof(directory), time + 4, current_dir_content[pos].name);
+    }
+    else {
+      printf("%s  %-s %6d %.12s %-s\n",
+             modstr, all_users.users[current_user_id].user_name, node.size, time + 4, current_dir_content[pos].name);
+    }
+  }
 
   return FS_OK;
 }
@@ -810,16 +849,15 @@ int file_cat(void) {
 /*
  * oct2dec - Change Octal number to decimal number
  * 
- * For this program use, only supply 0~7777
+ * For this program use, only supply 0~777
  */
 int oct2dec(int oct_number) {
   int dec_number = 0;
-  int a, b, c, d;
-  a = oct_number / 1000;
-  b = (oct_number % 1000) / 100;
-  c = (oct_number % 100) / 100;
-  d = oct_number % 10;
-  dec_number = d + c * 8 + b * 64 + a * 512;
+  int a, b, c;
+  a = oct_number / 100;
+  b = (oct_number % 100) / 10;
+  c = oct_number % 10;
+  dec_number = c + b * 8 + a * 64;
   return dec_number;
 }
 
@@ -839,8 +877,8 @@ int check_name(char *name) {
  * check_type - Check file type
  */
 int check_type(int mode, int type) {
-  int isdir = mode & (1 << 9);
-  if (isdir == (1 << 9) && type == TYPE_FILE)
+  int isdir = mode & (1 << 6);
+  if (isdir == (1 << 6) && type == TYPE_FILE)
     return FS_ISNOT_FILE;
   else if (isdir == 0 && type == TYPE_DIR)
     return FS_ISNOT_DIR;
@@ -889,7 +927,7 @@ void path_change(int old_inode_id, char *name) {
 }
 
 /*
- *
+ * mtime_change - Change modified time for a file
  */
 int mtime_change(int ino, char *name) {
   int i;
@@ -898,13 +936,13 @@ int mtime_change(int ino, char *name) {
 
   /* Check if the directory or file exists */
   for (i = 0; i < current_dir_num; i++) {
-    if (strcmp(path, current_dir_content[i].name) == 0)
+    if (strcmp(current_dir_content[i].name, name) == 0)
       break;
   }
   ch_node = current_dir_content[i].inode_id;
 
   /* Check if this is a directory */
-  fseek(disk, INODEPOS + current_dir_content[ch_node].inode_id * BLOCKSIZE, SEEK_SET);
+  fseek(disk, INODEPOS + ch_node * INODESIZE, SEEK_SET);
   fread(&node, sizeof(node), 1, disk);
   
   /* Update modify time */
@@ -912,5 +950,30 @@ int mtime_change(int ino, char *name) {
 	time(&timer);
   node.modify_time = timer;
 
+  /* Save node data */
+  fseek(disk, INODEPOS + ch_node * INODESIZE, SEEK_SET);
+  fwrite(&node, sizeof(node), 1, disk);
+
   return FS_OK;
+}
+
+/*
+ * path_cd - Change path when enter a directory
+ */
+void get_modestr(char *modstr, int mode) {
+  strcpy(modstr, "-------");
+  if ((mode & (1 << 6)) == (1 << 6))
+    modstr[0] = 'd';
+  if ((mode & (1 << 5)) == (1 << 5))
+    modstr[1] = 'r';
+  if ((mode & (1 << 4)) == (1 << 4))
+    modstr[2] = 'w';
+  if ((mode & (1 << 3)) == (1 << 3))
+    modstr[3] = 'x';
+  if ((mode & (1 << 2)) == (1 << 2))
+    modstr[4] = 'r';
+  if ((mode & (1 << 1)) == (1 << 1))
+    modstr[5] = 'w';
+  if ((mode & 1) == 1)
+    modstr[6] = 'x';
 }

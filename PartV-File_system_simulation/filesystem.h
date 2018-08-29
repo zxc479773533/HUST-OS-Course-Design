@@ -52,8 +52,8 @@ typedef struct inode {
   int block_used_num;
   int size;
   int mode;
-  int creat_time;
-  int modify_time;
+  time_t creat_time;
+  time_t modify_time;
   int user_id;
 } inode;
 
@@ -119,6 +119,7 @@ int dir_creat(int ino, int type, char *name);
 int dir_rm(int ino, int type, char *name);
 int dir_cd(int ino, char *path);
 int dir_ls(void);
+int dir_ls_l(void);
 int file_open(int ino, char *name);
 int file_close(int ino, char *name);
 int file_cat(void);
@@ -129,5 +130,6 @@ int check_name(char *name);
 int check_type(int mode, int type);
 void path_change(int old_inode_id, char *name);
 int mtime_change(int ino, char *name);
+void get_modestr(char *modstr, int mode);
 
 #endif // !ZXCPYP_FILESYSTEM
