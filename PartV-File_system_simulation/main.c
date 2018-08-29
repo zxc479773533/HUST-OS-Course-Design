@@ -17,15 +17,15 @@ void print_version() {
   char ch[20];
   printf("ZXCPYP File System: version v1.0\n\n");
   printf("Copyright (C) 2018 zxcpyp\n\n");
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 19; i++) {
     memset(ch, 0, sizeof(ch));
     strncpy(ch, load, i + 1);
-    printf("loading %s", ch);
+    printf("loading %s\n", ch);
     fflush(stdout);
     usleep(100000);
-    printf("\r\033[k"); 
+    printf("\033[1A\033[K");
   }
-  printf("\n\n");
+  printf("loading ....................\n\n");
 }
 
 int main(int argc, char **argv) {
