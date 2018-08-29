@@ -15,6 +15,8 @@
 #define FS_ISNOT_DIR 11
 #define FS_IS_DIR 12
 #define FS_DIR_NOEMPTY 13
+#define FS_USER_EXIST 14
+#define FS_USER_NOT_EXIST 15
 
 #define FS_INVALID 98
 

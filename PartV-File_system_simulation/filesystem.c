@@ -236,6 +236,9 @@ int block_free(int bno) {
 
 /********************USER FUNCTIONS********************/
 
+/*
+ * login - Login for the disk
+ */
 int login(void) {
   sys_users all_users;
   char uname[USERNAMEMAX];
@@ -252,8 +255,8 @@ int login(void) {
 
   /* Check user */
   for (int i = 0; i < USERNUMMAX; i++) {
-    if (strcmp(uname, all_users.users[i].user_name) == 0) {
-      if (strcmp(upwd, all_users.users[i].user_pwd) == 0) {
+    if (strcmp(all_users.users[i].user_name, uname) == 0) {
+      if (strcmp(all_users.users[i].user_pwd, upwd) == 0) {
         current_user_id = i;
         sprintf(path, "%s@localhost: / >", uname);
         printf("\033[2J");
@@ -265,6 +268,116 @@ int login(void) {
   usleep(500000);
   printf("Login incorrect\n\n");
   return FS_LOGIN_ERROR;
+}
+
+/*
+ * user_pwd - Change a user's password
+ */
+int user_pwd(void) {
+  int i;
+  sys_users all_users;
+  char current_pwd[USERPWDMAX], new_pwd[USERPWDMAX], new_pwd_2[USERPWDMAX];
+  
+  /* Read users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fread(&all_users, sizeof(sys_users), 1, disk);
+
+  printf("Change password for %s\n", all_users.users[current_user_id].user_name);
+  printf("Current password: ");
+  scanf("%s", current_pwd);
+  getchar();
+
+  if (strcmp(all_users.users[current_user_id].user_pwd, current_pwd) != 0) {
+    printf("passwd: Identification failure\n");
+    printf("passwd: Password not changed\n");
+    return FS_INVALID;
+  }
+
+  printf("New password: ");
+  scanf("%s", new_pwd);
+  printf("New password again: ");
+  scanf("%s", new_pwd_2);
+  getchar();
+
+  if (strcmp(new_pwd, new_pwd_2) != 0) {
+    printf("Sorry, the password does not match\n");
+    printf("passwd: Password service preliminary check failed\n");
+    printf("passwd: Password not changed\n");
+    return FS_INVALID;
+  }
+
+  strcpy(all_users.users[current_user_id].user_pwd, new_pwd);
+  printf("password: Password successfully updated\n");
+
+  /* Save users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fwrite(&all_users, sizeof(sys_users), 1, disk);
+
+  return FS_OK;
+}
+
+
+/*
+ * user_add - Add a user
+ */
+int user_add(char *name, char *pwd) {
+  sys_users all_users;
+
+  /* Read users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fread(&all_users, sizeof(sys_users), 1, disk);
+
+  /* Check user */
+  for (int i = 0; i < USERNUMMAX; i++) {
+    if (strcmp(all_users.users[i].user_name, name) == 0) {
+      return FS_USER_EXIST;
+    }
+  }
+
+  for (int i = 0; i < USERNUMMAX; i++) {
+    if (all_users.user_map[i] == 0) {
+      all_users.user_map[i] = 1;
+      strcpy(all_users.users[i].user_name, name);
+      strcpy(all_users.users[i].user_pwd, pwd);
+      break;
+    }
+  }
+
+  /* Save users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fwrite(&all_users, sizeof(sys_users), 1, disk);
+
+  return FS_OK;
+}
+
+/*
+ * user_del - Delete a user
+ */
+int user_del(char *name) {
+  sys_users all_users;
+  int i;
+
+  /* Read users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fread(&all_users, sizeof(sys_users), 1, disk);
+
+  /* Check user */
+  for (i = 0; i < USERNUMMAX; i++) {
+    if (strcmp(all_users.users[i].user_name, name) == 0) {
+      memset(all_users.users[i].user_name, 0, USERNAMEMAX);
+      memset(all_users.users[i].user_pwd, 0, USERPWDMAX);
+      all_users.user_map[i] = 0;
+      break;
+    }
+  }
+  if (i == USERNUMMAX)
+    return FS_USER_NOT_EXIST;
+
+  /* Save users inforation */
+  fseek(disk, 0, SEEK_SET);
+  fwrite(&all_users, sizeof(sys_users), 1, disk);
+
+  return FS_OK;
 }
 
 /********************DISK FUNCTIONS********************/

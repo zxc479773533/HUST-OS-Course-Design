@@ -19,7 +19,7 @@
 int developer = 1;
 
 // char prompt[] = "zxcpyp > ";
-char theme[] = "Here to control a zxcpyp's file system";
+char theme[] = "Here to control zxcpyp's file system";
 
 /* Founction prototypes */
 void eval(char *cmdline);
@@ -62,10 +62,9 @@ int Start_Shell(int argc, char **argv) {
   }
 
   /* Print informations */
-  printf("[INFO] Wherecome to zxcpyp's interactive shell!\n");
-  printf("[INFO] %s\n", theme);
-  printf("[INFO] Try help to see how to use this Controller\n");
-  printf("\n\n");
+  printf("Wherecome to zxcpyp's interactive shell!\n");
+  printf("%s\n", theme);
+  printf("\n");
 
   /* Excute the shell's read/eval loop */
   while (1) {
@@ -73,8 +72,8 @@ int Start_Shell(int argc, char **argv) {
     /* Print prompt */
     if (emit_prompt) {
       if (developer == 0)
-        printf("[Developer mode] ");
-      printf("%s ", path);
+        printf("\e[1;31m[Developer mode] \e[0m");
+      printf("\e[1;32m%s \e[0m", path);
       fflush(stdout);
     }
     if ((fgets(cmdline, MAXLINE, stdin) == NULL) && ferror(stdin)) {
@@ -114,7 +113,7 @@ void eval(char *cmdline) {
   if (!developer_cmd(argc, argv)) {
     if (!builtin_cmd(argv)) {
       if (!py_execute(argv[0], argc, argv))
-        printf("[INFO] zxcpypsh: command not found.\n");
+        printf("zxcpypsh: command not found.\n");
       // else
         // printf("[INFO] Operation finished.\n\n");
     }

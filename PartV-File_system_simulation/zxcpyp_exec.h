@@ -66,8 +66,12 @@ int builtin_cmd(char **argv) {
     dir_ls();
     return 1;
   }
+  if (!strcmp(argv[0], "passwd")) {
+    user_pwd();
+    return 1;
+  }
   if (!strcmp(argv[0], "exit")) {
-    printf("[INFO] User-exit. Terminated!\n");
+    printf("[EXIT] User-exit. Terminated!\n");
     close_disk();
     fclose(disk);
     exit(0);
@@ -85,7 +89,11 @@ int builtin_cmd(char **argv) {
  */
 int py_execute(char *func , int argc, char **argv) {
   int ret;
-  if (argc == 2 && !strcmp(func, "mkdir")) {
+  if (!strcmp(func, "mkdir")) {
+    if (argc != 2) {
+      printf("Usage: mkdir [dirname]\n");
+      return 1;
+    }
     ret = dir_creat(current_inode_id, TYPE_DIR, argv[1]);
     if (ret == FS_FILE_EXIST)
       printf("mkdir: Fail to create directory \"%s\": File already exists\n", argv[1]);
@@ -93,7 +101,11 @@ int py_execute(char *func , int argc, char **argv) {
       printf("mkdir: Fail to create directory \"%s\": No enough space\n", argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "rmdir")) {
+  if (!strcmp(func, "rmdir")) {
+    if (argc != 2) {
+      printf("Usage: rmdir [dirname]\n");
+      return 1;
+    }
     ret = dir_rm(current_inode_id, TYPE_DIR, argv[1]);
     if (ret == FS_INVALID)
       printf("rmdir: Fail to delete \"%s\": Invalid operation\n", argv[1]);
@@ -107,7 +119,11 @@ int py_execute(char *func , int argc, char **argv) {
       printf("rmdir: Fail to delete \"%s\": Directory not empty\n", argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "cd")) {
+  if (!strcmp(func, "cd")) {
+    if (argc != 2) {
+      printf("Usage: cd [dirname]\n");
+      return 1;
+    }
     int old_inode_id = current_inode_id;
     ret = dir_cd(current_inode_id, argv[1]);
     if (ret == FS_NO_EXIST)
@@ -118,7 +134,11 @@ int py_execute(char *func , int argc, char **argv) {
       path_change(old_inode_id, argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "touch")) {
+  if (!strcmp(func, "touch")) {
+    if (argc != 2) {
+      printf("Usage: touch [filename]\n");
+      return 1;
+    }
     ret = dir_creat(current_inode_id, TYPE_FILE, argv[1]);
     if (ret == FS_FILE_EXIST)
       mtime_change(current_inode_id, argv[1]);
@@ -126,7 +146,11 @@ int py_execute(char *func , int argc, char **argv) {
       printf("touch: Fail to create file \"%s\": No enough space\n", argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "rm")) {
+  if (!strcmp(func, "rm")) {
+    if (argc != 2) {
+      printf("Usage: touch [filename]\n");
+      return 1;
+    }
     ret = dir_rm(current_inode_id, TYPE_FILE, argv[1]);
     if (ret == FS_INVALID)
       printf("rmdir: Fail to delete \"%s\": Invalid operation\n", argv[1]);
@@ -138,7 +162,11 @@ int py_execute(char *func , int argc, char **argv) {
       printf("rmdir: Fail to delete \"%s\": Not a file\n", argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "vim")) {
+  if (!strcmp(func, "vim")) {
+    if (argc != 2) {
+      printf("Usage: vim [filename]\n");
+      return 1;
+    }
     int pid, status;
 	  char *vim_arg[]={"vim", BUFFERFILE, NULL};
     ret = file_open(current_inode_id, argv[1]);
@@ -157,7 +185,11 @@ int py_execute(char *func , int argc, char **argv) {
     file_close(current_inode_id, argv[1]);
     return 1;
   }
-  if (argc == 2 && !strcmp(func, "cat")) {
+  if (!strcmp(func, "cat")) {
+    if (argc != 2) {
+      printf("Usage: cat [filename]\n");
+      return 1;
+    }
     ret = file_open(current_inode_id, argv[1]);
     if (ret == FS_IS_DIR)
       printf("cat: \"%s\": Is a directory\n", argv[1]);
@@ -166,6 +198,34 @@ int py_execute(char *func , int argc, char **argv) {
     else {
       file_cat();
       file_close(current_inode_id, argv[1]);
+    }
+    return 1;
+  }
+  if (!strcmp(func, "useradd")) {
+    if (argc != 3) {
+      printf("Usage: useradd [username] [userpwd]\n");
+      return 1;
+    }
+    if (current_user_id != 0)
+      printf("useradd: You need root privilege!\n");
+    else {
+      ret = user_add(argv[1], argv[2]);
+      if (ret == FS_USER_EXIST)
+        printf("useradd: Failed to add user \"%s\": User already exists\n", argv[1]);
+    }
+    return 1;
+  }
+  if (!strcmp(func, "userdel")) {
+    if (argc != 2) {
+      printf("Usage: userdel [username]\n");
+      return 1;
+    }
+    if (current_user_id != 0)
+      printf("userdel: You need root privilege!\n");
+    else {
+      ret = user_del(argv[1]);
+      if (ret == FS_USER_NOT_EXIST)
+        printf("userdel: Failed to delete user \"%s\": User not exists\n", argv[1]);
     }
     return 1;
   }

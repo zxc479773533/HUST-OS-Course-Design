@@ -103,8 +103,8 @@ int block_free(int bno);
 
 /* User function */
 int login(void);
+int user_pwd(void);
 int user_add(char *name, char *pwd);
-int user_pwd(char *name, char *new_pwd);
 int user_del(char *name);
 
 /* Disk function */
