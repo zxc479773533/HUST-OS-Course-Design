@@ -610,7 +610,7 @@ int dir_rm(int ino, int type, char *name) {
   fread(&node, sizeof(node), 1, disk);
 
   /* Check user */
-  if (node.user_id != current_user_id)
+  if (node.user_id != current_user_id && current_user_id != 0)
     return FS_NO_PRIVILAGE;
 
   /* Check type */
