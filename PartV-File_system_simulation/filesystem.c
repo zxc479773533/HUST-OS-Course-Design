@@ -881,7 +881,7 @@ int file_cat(void) {
 }
 
 /*
- * file_mv - Move file
+ * file_mv - Move file from srcname to dstname
  */
 int file_mv(int ino, char *srcname, char *dstname) {
   int pos;
@@ -996,7 +996,128 @@ int file_mv(int ino, char *srcname, char *dstname) {
     dir_open(ino);
   }
 
-  /* Change modify time */
+  return FS_OK;
+}
+
+/*
+ * file_cp - Copy file from srcname to dstname
+ */
+int file_cp(int ino, char *srcname, char *dstname) {
+  int pos, bno;
+  int src_inode;
+  inode node;
+  char block[BLOCKSIZE];
+  FILE *buf_fp = fopen(BUFFERFILE, "w+");
+
+  /* Check if the directory or file exists */
+  for (pos = 0; pos < current_dir_num; pos++) {
+    if (strcmp(current_dir_content[pos].name, srcname) == 0)
+      break;
+  }
+  if (pos == current_dir_num)
+    return FS_NO_EXIST;
+
+  src_inode = current_dir_content[pos].inode_id;
+
+  /* Check mode */
+  if (check_mode(current_inode_id, CAN_READ) == 0)
+    return FS_NO_PRIVILAGE;
+
+  /* Read inode information */
+  fseek(disk, INODEPOS + src_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Check type */
+  if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR)
+    return FS_IS_DIR;
+  
+  /* Copy file content */
+  if (node.size == 0) {
+    fclose(buf_fp);
+    return FS_OK;
+  }
+  for (pos = 0; pos < node.block_used_num - 1; pos++) {
+    memset(block, 0, BLOCKSIZE);
+    bno = node.block_used[pos];
+    fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+    fread(block, sizeof(char), BLOCKSIZE, disk);
+    fwrite(block, sizeof(char), BLOCKSIZE, buf_fp);
+  }
+  bno = node.block_used[pos];
+  fseek(disk, BLOCKPOS + bno * BLOCKSIZE, SEEK_SET);
+  fread(block, sizeof(char), node.size, disk);
+  fwrite(block, sizeof(char), node.size, buf_fp);
+  fclose(buf_fp);
+  
+  /* Copy to other directory */
+  if (dstname[strlen(dstname) - 1] == '/') {
+    dstname[strlen(dstname) - 1] = '\0';
+    int dstpos, dst_node;
+    inode dstnode;
+
+    /* Check if the directory or file exists */
+    for (dstpos = 0; dstpos < current_dir_num; dstpos++) {
+      if (strcmp(current_dir_content[dstpos].name, dstname) == 0)
+        break;
+    }
+    if (dstpos == current_dir_num)
+      return FS_NO_EXIST;
+
+    dst_node = current_dir_content[dstpos].inode_id;
+
+    /* Check mode */
+    if (check_mode(dst_node, CAN_WRITE) == 0)
+      return FS_NO_PRIVILAGE;
+
+    /* Read inode information */
+    fseek(disk, INODEPOS + dst_node * INODESIZE, SEEK_SET);
+    fread(&dstnode, sizeof(dstnode), 1, disk);
+
+    /* Check type */
+    if (check_type(dstnode.mode, TYPE_FILE) == FS_IS_FILE)
+      return FS_IS_FILE;
+    
+    /* Check same name */
+    dir_cd(current_inode_id, dstname);
+    if (check_name(srcname) == FS_FILE_EXIST) {
+      dir_close(current_inode_id);
+      current_inode_id = ino;
+      dir_open(ino);
+      return FS_FILE_EXIST;
+    }
+    dir_close(current_inode_id);
+    current_inode_id = ino;
+    dir_open(ino);
+
+    /* Create new entry */
+    dir_cd(current_inode_id, dstname);
+    dir_creat(current_inode_id, TYPE_FILE, srcname);
+
+    /* Save file content */
+    file_close(current_inode_id, srcname);
+
+    /* Return to src directory */
+    dir_close(current_inode_id);
+    current_inode_id = ino;
+    dir_open(ino);
+  }
+  /* Copy to current directory */
+  else {
+    /* Check mode */
+    if (check_mode(current_inode_id, CAN_WRITE) == 0)
+      return FS_NO_PRIVILAGE;
+    
+    /* Check same name */
+    if (check_name(dstname) == FS_FILE_EXIST)
+      return FS_FILE_EXIST;
+
+    /* Create new file */
+    dir_creat(ino, TYPE_FILE, dstname);
+    
+    /* Save file content */
+    file_close(ino, dstname);
+  }
+
   return FS_OK;
 }
 
@@ -1255,11 +1376,10 @@ int check_if_readonly(int ino, char *name) {
 
   fclose(buf_fp);
 
-  if((pid = fork()) == 0) {
-			execvp("vim", vim_arg);
-		}
-  wait(&status);
-  printf("vim: Fail to save \"%s\": Insufficient privilege\n", name);
+  if ((pid = fork()) == 0) {
+		execvp("vim", vim_arg);
+	}
 
+  wait(&status);
   return TRUE;
 }

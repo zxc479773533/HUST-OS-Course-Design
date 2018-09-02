@@ -186,8 +186,10 @@ int py_execute(char *func , int argc, char **argv) {
     }
     int pid, status;
 	  char *vim_arg[] = {"vim", BUFFERFILE, NULL};
-    if (check_if_readonly(current_inode_id, argv[1]) == TRUE)
+    if (check_if_readonly(current_inode_id, argv[1]) == TRUE) {
+      printf("vim: Fail to save \"%s\": Insufficient privilege\n", argv[1]);
       return 1;
+    }
     ret = file_open(current_inode_id, argv[1]);
     if (ret == FS_IS_DIR) {
       printf("vim: Fail to open \"%s\": Is a directory\n", argv[1]);
@@ -274,7 +276,7 @@ int py_execute(char *func , int argc, char **argv) {
   }
   if (!strcmp(func, "mv")) {
     if (argc != 3) {
-      printf("Usage: mv [srcfile] [dstfile]\n");
+      printf("Usage: mv [srcfile] [dstfile | dstdir/]\n");
       return 1;
     }
     ret = file_mv(current_inode_id, argv[1], argv[2]);
@@ -288,6 +290,24 @@ int py_execute(char *func , int argc, char **argv) {
       printf("mv: Unable to move \"%s\" into \"%s\": Not a directory\n", argv[1], argv[2]);
     else if (ret == FS_FILE_EXIST)
       printf("mv: Unable to move \"%s\": Target file exists\n", argv[1]);
+    return 1;
+  }
+  if (!strcmp(func, "cp")) {
+    if (argc != 3) {
+      printf("Usage: cp [srcfile] [dstfile | dstdir/]\n");
+      return 1;
+    }
+    ret = file_cp(current_inode_id, argv[1], argv[2]);
+    if (ret == FS_NO_EXIST)
+      printf("cp: Unable to get file status for \"%s\" or \"%s\" (stat) : No such file or directory\n", argv[1], argv[2]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("cp: Unable to copy \"%s\": Insufficient privilege\n", argv[1]);
+    else if (ret == FS_IS_DIR)
+      printf("cp: Unable to copy \"%s\": Not a file\n", argv[1]);
+    else if (ret == FS_IS_FILE)
+      printf("cp: Unable to copy \"%s\" into \"%s\": Not a directory\n", argv[1], argv[2]);
+    else if (ret == FS_FILE_EXIST)
+      printf("cp: Unable to move \"%s\": Target file exists\n", argv[1]);
     return 1;
   }
   return 0;

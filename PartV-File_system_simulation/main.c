@@ -15,7 +15,7 @@
 void print_version() {
   char load[] = "....................";
   char ch[20];
-  printf("ZXCPYP File System: version v1.0\n\n");
+  printf("ZXCPYP File System: version v1.2\n\n");
   printf("Copyright (C) 2018 zxcpyp\n\n");
   for (int i = 0; i < 19; i++) {
     memset(ch, 0, sizeof(ch));
