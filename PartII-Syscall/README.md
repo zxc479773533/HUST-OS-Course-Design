@@ -12,6 +12,11 @@ Here I add three syscalls:
 2. Test parameter passing
 3. Copy files
 
+## How to add syscall
+
+1. Add syscall name in `linux-4.17.8/arch/x86/entry/syscalls/syscall_64.tbl`.
+2. Add syscall Implementation in `linux-4.17.8/kernel/sys.c` using `SYSCALL_DEFINE`.
+
 ### Get linux kernel code 4.17.8
 
 Here we get it from kernel.org.
