@@ -10,17 +10,35 @@
 
 #include "filesystem.h"
 
+/* Decide whether use developer APIs */
+int developer = 1;
+
 /*
  * print_help - Print help messages
  */
 void print_help(void) {
-  printf("To be add......\n");
+  printf("ZXCPYP File System version 1.2\n\n");
+  printf("Supported cmd:\n");
+  printf("  Directory and File operations:\n");
+  printf("    %-8s %-8s %-8s %-8s %-8s\n", "mkdir", "rmdir", "cd", "ls [-l]", "touch");
+  printf("    %-8s %-8s %-8s %-8s\n", "vim", "cat", "cp", "mv");
+  printf("  User operations:\n");
+  printf("    %-8s %-8s %-8s\n", "useradd", "userdel", "passwd");
+  printf("  Other operations:\n");
+  printf("    %-8s %-8s %-8s %-8s\n", "fmt", "chmod", "help", "exit");
+  if (developer == 0) {
+    printf("  Developer operations:\n");
+    printf("    %-8s %-8s %-8s %-8s %-8s\n", "reset", "puid", "pino", "dirnum", "show");
+    printf("    %-8s %-8s %-8s\n", "users", "superi", "superb");
+  }
 }
 
 /*
  * builtin_cmd - Judge buildin command
  */
 int developer_cmd(int argc, char **argv) {
+  if (developer == 1)
+    return 0;
   if (!strcmp(argv[0], "reset")) {
     reset_disk();
     return 1;

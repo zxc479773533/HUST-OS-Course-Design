@@ -736,11 +736,11 @@ int dir_ls_l(void) {
 
     if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR) {
       printf("%s  %-s \e[1;34m%6ld\e[0m %.12s \e[1;34m%-s\e[0m\n",
-             modstr, all_users.users[current_user_id].user_name, node.size / sizeof(directory), time + 4, current_dir_content[pos].name);
+             modstr, all_users.users[node.user_id].user_name, node.size / sizeof(directory), time + 4, current_dir_content[pos].name);
     }
     else {
       printf("%s  %-s %6d %.12s %-s\n",
-             modstr, all_users.users[current_user_id].user_name, node.size, time + 4, current_dir_content[pos].name);
+             modstr, all_users.users[node.user_id].user_name, node.size, time + 4, current_dir_content[pos].name);
     }
   }
 

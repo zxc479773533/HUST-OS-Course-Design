@@ -15,8 +15,6 @@
 #define MAXARGS 128
 
 /* Global variables */
-/* Decide whether use developer APIs */
-int developer = 1;
 
 // char prompt[] = "zxcpyp > ";
 char theme[] = "Here to control zxcpyp's file system";
@@ -24,6 +22,23 @@ char theme[] = "Here to control zxcpyp's file system";
 /* Founction prototypes */
 void eval(char *cmdline);
 int parseline(const char *cmdline, char **argv);
+
+/* Print file system version */
+void print_version() {
+  char load[] = "....................";
+  char ch[20];
+  printf("ZXCPYP File System: version v1.2\n\n");
+  printf("Copyright (C) 2018 zxcpyp\n\n");
+  for (int i = 0; i < 19; i++) {
+    memset(ch, 0, sizeof(ch));
+    strncpy(ch, load, i + 1);
+    printf("loading %s\n", ch);
+    fflush(stdout);
+    usleep(100000);
+    printf("\033[1A\033[K");
+  }
+  printf("loading ....................\n\n");
+}
 
 /* Print usage messages */
 void print_usage(void) {
@@ -35,8 +50,8 @@ void print_usage(void) {
   printf("\tdefault: start shell\n");
 }
 
-
 int Start_Shell(int argc, char **argv) {
+  int ret;
   char ch;
   /* The command line */
   char cmdline[MAXLINE];
@@ -60,6 +75,13 @@ int Start_Shell(int argc, char **argv) {
       exit(1);
     }
   }
+
+  /* Login */
+  print_version();
+  while (login() != FS_LOGIN) {}
+  ret = load_super_block();
+  if (ret == FS_RD_ERROR)
+    return FS_RD_ERROR;
 
   /* Print informations */
   printf("Wherecome to zxcpyp's interactive shell!\n");
