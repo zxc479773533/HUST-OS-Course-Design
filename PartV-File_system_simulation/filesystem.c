@@ -863,6 +863,9 @@ int file_close(int ino, char *name) {
   return FS_OK;
 }
 
+/*
+ * file_cat - Get a file's content
+ */
 int file_cat(void) {
   int read_num;
   FILE *buf_fp = fopen(BUFFERFILE, "r");
@@ -874,6 +877,126 @@ int file_cat(void) {
     printf("%s", block);
 
   fclose(buf_fp);
+  return FS_OK;
+}
+
+/*
+ * file_mv - Move file
+ */
+int file_mv(int ino, char *srcname, char *dstname) {
+  int pos;
+  int src_inode;
+  inode node;
+
+  /* Check if the directory or file exists */
+  for (pos = 0; pos < current_dir_num; pos++) {
+    if (strcmp(current_dir_content[pos].name, srcname) == 0)
+      break;
+  }
+  if (pos == current_dir_num)
+    return FS_NO_EXIST;
+
+  src_inode = current_dir_content[pos].inode_id;
+
+  /* Check mode */
+  if (check_mode(current_inode_id, CAN_READ) == 0)
+    return FS_NO_PRIVILAGE;
+
+  /* Read inode information */
+  fseek(disk, INODEPOS + src_inode * INODESIZE, SEEK_SET);
+  fread(&node, sizeof(node), 1, disk);
+
+  /* Check type */
+  if (check_type(node.mode, TYPE_DIR) == FS_IS_DIR)
+    return FS_IS_DIR;
+  
+  /* Move to other directory */
+  if (dstname[strlen(dstname) - 1] == '/') {
+    dstname[strlen(dstname) - 1] = '\0';
+    int dstpos, dst_node;
+    inode dstnode;
+
+    /* Check if the directory or file exists */
+    for (dstpos = 0; dstpos < current_dir_num; dstpos++) {
+      if (strcmp(current_dir_content[dstpos].name, dstname) == 0)
+        break;
+    }
+    if (dstpos == current_dir_num)
+      return FS_NO_EXIST;
+
+    dst_node = current_dir_content[dstpos].inode_id;
+
+    /* Check mode */
+    if (check_mode(dst_node, CAN_WRITE) == 0)
+      return FS_NO_PRIVILAGE;
+
+    /* Read inode information */
+    fseek(disk, INODEPOS + dst_node * INODESIZE, SEEK_SET);
+    fread(&dstnode, sizeof(dstnode), 1, disk);
+
+    /* Check type */
+    if (check_type(dstnode.mode, TYPE_FILE) == FS_IS_FILE)
+      return FS_IS_FILE;
+    
+    /* Check same name */
+    dir_cd(current_inode_id, dstname);
+    if (check_name(srcname) == FS_FILE_EXIST) {
+      dir_close(current_inode_id);
+      current_inode_id = ino;
+      dir_open(ino);
+      return FS_FILE_EXIST;
+    }
+    dir_close(current_inode_id);
+    current_inode_id = ino;
+    dir_open(ino);
+
+    /* Delete entry */
+    for (; pos < current_dir_num - 1; pos++) {
+      current_dir_content[pos] = current_dir_content[pos + 1];
+    }
+    current_dir_num--;
+
+    /* Free last block if need */
+    if (current_dir_num / DIRMAXINBLK != (current_dir_num - 1) / DIRMAXINBLK) {
+      current_inode.block_used_num--;
+      block_free(current_inode.block_used[current_inode.block_used_num]);
+    }
+
+    /* Create new entry */
+    dir_cd(current_inode_id, dstname);
+    dir_creat(current_inode_id, TYPE_FILE, srcname);
+
+    /* Copy inode */
+    for (dstpos = 0; dstpos < current_dir_num; dstpos++) {
+      if (strcmp(current_dir_content[dstpos].name, srcname) == 0)
+        break;
+    }
+    dst_node = current_dir_content[dstpos].inode_id;
+    fseek(disk, INODEPOS + dst_node * INODESIZE, SEEK_SET);
+    fwrite(&node, sizeof(node), 1, disk);
+
+    /* Return to src directory */
+    dir_close(current_inode_id);
+    current_inode_id = ino;
+    dir_open(ino);
+  }
+  /* Move to current directory */
+  else {
+    /* Check mode */
+    if (check_mode(current_inode_id, CAN_WRITE) == 0)
+      return FS_NO_PRIVILAGE;
+    
+    /* Check same name */
+    if (check_name(dstname) == FS_FILE_EXIST)
+      return FS_FILE_EXIST;
+
+    strcpy(current_dir_content[pos].name, dstname);
+    /* Save data */
+    dir_close(current_inode_id);
+    dir_open(ino);
+  }
+
+  /* Change modify time */
   return FS_OK;
 }
 

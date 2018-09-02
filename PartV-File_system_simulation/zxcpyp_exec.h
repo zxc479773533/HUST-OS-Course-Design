@@ -272,5 +272,23 @@ int py_execute(char *func , int argc, char **argv) {
       printf("chmod: Invalid operation: \"%s\"\n", argv[1]);
     return 1;
   }
+  if (!strcmp(func, "mv")) {
+    if (argc != 3) {
+      printf("Usage: mv [srcfile] [dstfile]\n");
+      return 1;
+    }
+    ret = file_mv(current_inode_id, argv[1], argv[2]);
+    if (ret == FS_NO_EXIST)
+      printf("mv: Unable to get file status for \"%s\" or \"%s\" (stat) : No such file or directory\n", argv[1], argv[2]);
+    else if (ret == FS_NO_PRIVILAGE)
+      printf("mv: Unable to move \"%s\": Insufficient privilege\n", argv[1]);
+    else if (ret == FS_IS_DIR)
+      printf("mv: Unable to move \"%s\": Not a file\n", argv[1]);
+    else if (ret == FS_IS_FILE)
+      printf("mv: Unable to move \"%s\" into \"%s\": Not a directory\n", argv[1], argv[2]);
+    else if (ret == FS_FILE_EXIST)
+      printf("mv: Unable to move \"%s\": Target file exists\n", argv[1]);
+    return 1;
+  }
   return 0;
 }

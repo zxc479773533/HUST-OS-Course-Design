@@ -128,6 +128,8 @@ int dir_ls_l(void);
 int file_open(int ino, char *name);
 int file_close(int ino, char *name);
 int file_cat(void);
+int file_mv(int ino, char *srcname, char *dstname);
+int file_cp(int ino, char *srcname, char *dstname);
 
 /* Assist function */
 int oct2dec(int oct_number);
