@@ -19,11 +19,13 @@ int current_dir_num;
 int current_user_id;
 char path[128];
 
+
 /********************DEVELOPER FUNCTIONS********************/
 /*
  * Warning: These functions is only for developer, they will not
  *          be called in the formal edition.
  */
+
 
 /*
  * reset_disk - Totally reset the disk, you can call it to reset
@@ -249,7 +251,9 @@ int block_free(int bno) {
   return FS_OK;
 }
 
+
 /********************USER FUNCTIONS********************/
+
 
 /*
  * login - Login for the disk
@@ -331,7 +335,6 @@ int user_pwd(void) {
   return FS_OK;
 }
 
-
 /*
  * user_add - Add a user
  */
@@ -365,6 +368,7 @@ int user_add(char *name, char *pwd) {
   return FS_OK;
 }
 
+
 /*
  * user_del - Delete a user
  */
@@ -395,7 +399,9 @@ int user_del(char *name) {
   return FS_OK;
 }
 
+
 /********************DISK FUNCTIONS********************/
+
 
 /*
  * load_super_block - Load super block information from disk
@@ -462,6 +468,7 @@ int format_disk(void) {
   return FS_OK;
 }
 
+
 /*
  * close_disk - Load super block information from disk
  */
@@ -482,7 +489,9 @@ int close_disk(void) {
   return FS_OK;
 }
 
+
 /********************DIR FUNCTIONS********************/
+
 
 /*
  * dir_open - Open a directory, and read its data in memory
@@ -1121,7 +1130,9 @@ int file_cp(int ino, char *srcname, char *dstname) {
   return FS_OK;
 }
 
+
 /********************ASSIST FUNCTIONS********************/
+
 
 /*
  * oct2dec - Change Octal number to decimal number
