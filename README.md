@@ -12,7 +12,6 @@ CMake minimum required: version 3.9
 ## Compile
 
 ```sh
-touch ./PartV-File_system_simulation/zxcpyp_disk
 mkdir build
 cd build
 cmake ..
