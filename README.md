@@ -66,6 +66,10 @@ The details can be seen [here](PartIV-System_monitor)
 
 ## Part V: Implement a file system simulation
 
+Initial user: root
+
+Initial password: 123456
+
 Here are two screenshot for my file system.
 
 The details can be seen in report.
