@@ -1339,6 +1339,9 @@ int mode_change(int mode, char *name) {
   return FS_OK;
 }
 
+/*
+ * check_if_readonly - Check if a file is readonly
+ */
 int check_if_readonly(int ino, char *name) {
   int pid, status;
   int check_inode;

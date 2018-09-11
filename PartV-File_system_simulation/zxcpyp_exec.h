@@ -280,7 +280,7 @@ int py_execute(char *func , int argc, char **argv) {
   }
   if (!strcmp(func, "chmod")) {
     if (argc != 3) {
-      printf("Usage: userdel [mod] [filename]\n");
+      printf("Usage: chmod [mod] [filename]\n");
       return 1;
     }
     ret = mode_change(atoi(argv[1]), argv[2]);
