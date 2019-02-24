@@ -17,7 +17,7 @@ void read_stat(char (*info)[1024], char *stat_file) {
   /*
    * stat file format:
    * 
-   * pid (name) status ppid ......(13 data) priority (4 data) memory
+   * pid (name) status ppid ......(13 data) priority (5 data) memory
    */
   int pos;
 
@@ -85,7 +85,7 @@ void read_stat(char (*info)[1024], char *stat_file) {
   for (i = 0, pos = 0; pos < 1024; pos++) {
     if (stat_file[pos] == ' ')
       i++;
-    if (i == 4)
+    if (i == 5)
       break;
   }
   stat_file[pos] = '\0';
@@ -97,7 +97,10 @@ void read_stat(char (*info)[1024], char *stat_file) {
   }
   stat_file[pos] = '\0';
   char buf[1024];
-  sprintf(buf, "%d KB\0", abs(atoi(stat_file)) / 1024);
+  if (atoi(stat_file) > 1024)
+    sprintf(buf, "%.1f MB\0", atoi(stat_file) / 1024.0);
+  else
+    sprintf(buf, "%d KB\0", atoi(stat_file));
   strcpy(info[5], buf);
 }
 
@@ -523,7 +526,7 @@ int main(int argc, char **argv) {
   label1 = gtk_label_new("");
   gtk_container_add(GTK_CONTAINER(frame), label1);
   g_timeout_add(1000, (GtkFunction)get_sys_info, (gpointer)label1);
-  gtk_widget_set_size_request(frame, 550, 300);
+  
   gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
 
   frame = gtk_frame_new("Network");
@@ -551,6 +554,7 @@ int main(int argc, char **argv) {
   vbox = gtk_vbox_new(FALSE, 0);
 
   frame = gtk_frame_new("About Author");
+  gtk_widget_set_size_request(frame, 550, 350);
   hbox = gtk_hbox_new(FALSE, 0);
   sprintf(buffer1, "\n\n\n\n%15s: %-25s\n\n%15s: %-25s\n\n%15s: %-25s\n\n\n\n", "Auther", "zxcpyp", "Github", "zxc479773533", "e-mail", "zxc479773533@gmail.com");
   label = gtk_label_new(buffer1);
@@ -562,6 +566,7 @@ int main(int argc, char **argv) {
   gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
 
   frame = gtk_frame_new("About Version");
+  gtk_widget_set_size_request(frame, 550, 240);
   sprintf(buffer1, "\n\nVersion v1.2.0\n\n\
 Copyright (C) 2018 Pan Yue\n\
 School of Computer Science and Technology\n\
@@ -926,7 +931,7 @@ gboolean get_cpu_ratio(gpointer label) {
    * cpu user nice system idle iowait
    * 
    * t1, t2: Two near moments
-   * cpu(total) = user+nice+system+idle
+   * cpu(total) = user+nice+system+idle+iowait+irq+softirq
    * pcpu = 100 *(total – idle) / total
    * total =total(t2) – total(t1)
    * idle =idle(t2) – idle(t1)
@@ -935,25 +940,25 @@ gboolean get_cpu_ratio(gpointer label) {
   static long old_idle, old_total;
   static int flag = 0;
 
-  long user, nice, system, idle, total;
+  long user, nice, system, idle, iowait, irq, softirq, total;
   float total_diff, idle_diff;
   char cpu[10], buffer[256], cpu_ratio_char[256];
   int fd;
   fd = open("/proc/stat", O_RDONLY);
   read(fd, buffer, sizeof(buffer));
   close(fd);
-  sscanf(buffer, "%s %ld %ld %ld %ld", cpu, &user, &nice, &system, &idle);
+  sscanf(buffer, "%s %ld %ld %ld %ld %ld %ld %ld", cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq);
 
   /* First */
   if (flag == 0) {
     flag = 1;
     old_idle = idle;
-    old_total = user + nice + system + idle;
+    old_total = user + nice + system + idle + iowait + irq + softirq;
     cpu_ratio = 0;
   }
   /* Others */
   else {
-    total = user + nice + system + idle;
+    total = user + nice + system + idle + iowait + irq + softirq;
     total_diff = total - old_total;
     idle_diff = idle - old_idle;
     cpu_ratio = 100 * (total_diff - idle_diff) / total_diff;
@@ -1032,7 +1037,7 @@ gboolean get_memory_ratio(gpointer label) {
 
   /* Read memory free */
   i = 0;
-  pos = strstr(mem_buf, "MemFree");
+  pos = strstr(mem_buf, "MemAvailable");
   while (*pos != ':')
     pos++;
   pos += 1;

@@ -17,7 +17,7 @@ linux > cat /proc/1/stat
 1 (systemd) S 0 1 1 0 -1 4194560 11641 18392752 215 1926 178 169 26834 14961 20 0 1 0 2 240078848 1373 18446744073709551615 1 1 0 0 0 0 671173123 4096 1260 0 0 0 17 4 0 0 53 0 0 0 0 0 0 0 0 0 0
 ```
 
-We need the 1st, 2nd, 3rd, 4th, 18th, 23th data for pid, name, status, ppid, priority, memory
+We need the 1st, 2nd, 3rd, 4th, 18th, 24th data for pid, name, status, ppid, priority, memory
 
 ## Page 2: CPU information
 
@@ -37,7 +37,7 @@ The CPU information can be found in `/proc/cpuinfo`.
 
 The CPU utilization can be calculated as follows.
 
-cpu(total) = user + nice + system + idle
+cpu(total) = user + nice + system + idle + iowait + irq + softirq
 
 utilization = 100% * (△total – △idle) / △total
 
@@ -54,7 +54,7 @@ user nice system and idle can be found as first four number in `/proc/stat`.
 The Memory information can be found in `/proc/meminfo`.
 
 * MemTotal: line 1
-* MemFree: line 2
+* MemAvailable: line 3
 * SwapTotal: line 15
 * SwapFree: line 16
 
